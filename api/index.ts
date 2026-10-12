@@ -1,4 +1,4 @@
-import { createApp } from '../server/app.ts';
+import { createApp } from './app';
 
 // Vercel Serverless Function única bajo /api (ver vercel.json rewrite "/api/(.*)" -> "/api/index").
 // La sintaxis catch-all [...path].ts solo funciona en Next.js; en Vite se usa este archivo + rewrite.
