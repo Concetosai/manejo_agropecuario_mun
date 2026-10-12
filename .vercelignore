@@ -1,0 +1,23 @@
+node_modules
+dist
+build
+coverage
+
+# Entrenamiento OCR / artefactos locales (no necesarios en despliegue)
+*.traineddata
+repomix-output.xml
+
+# Respaldos y scripts locales
+*.backup
+*.backup-*
+server.ts.backup
+
+# Carpetas de trabajo locales
+test-images
+Google_docs
+
+# Config local
+.vercel
+.env
+.env.*
+!.env.example

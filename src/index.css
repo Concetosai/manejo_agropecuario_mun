@@ -1,0 +1,849 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+    width: 100%;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', Georgia, serif;
+}
+
+.font-playfair {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-mono-data {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hide scrollbar for tabs on mobile while keeping scroll capability */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Contenedor del fierro extraído y visualización completa */
+.fierro-extracted {
+  width: 248px;
+  height: 248px;
+  border: 3px solid #4a2c1a;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 15px;
+  background: white;
+  position: relative;
+  overflow: hidden;
+  padding: 10px; /* Agregar padding para que no toque los bordes */
+}
+
+.fierro-extracted img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain; /* CRÍTICO: esto hace que la imagen se ajuste completa sin cortarse */
+  object-position: center; /* Centra la imagen */
+  display: block;
+}
+
+.fierro-complete-indicator {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(40, 167, 69, 0.9);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.fierro-zoom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.fierro-zoom-controls button {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid #d6d3d1;
+  background-color: #f5f5f4;
+  color: #292524;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fierro-zoom-controls button:hover {
+  background-color: #e7e5e4;
+  border-color: #a8a29e;
+}
+
+/* =========================================================================
+   DISEÑO OFICIAL MÓDULO DIGITALIZACIÓN HISTÓRICA PÁNUCO (TEMPLATE)
+   ========================================================================= */
+.hist-template-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #333;
+}
+
+.hist-header {
+  background: linear-gradient(135deg, #2c1810 0%, #4a2c1a 100%);
+  color: white;
+  padding: 25px 30px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  box-shadow: 0 4px 20px rgba(44, 24, 16, 0.25);
+}
+
+.hist-header-content {
+  flex: 1;
+  min-width: 300px;
+}
+
+.hist-header-content h1 {
+  font-size: 26px;
+  margin-bottom: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.hist-header-content .subtitle {
+  font-size: 13px;
+  opacity: 0.9;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.hist-header-content p {
+  font-size: 14px;
+  opacity: 0.85;
+  line-height: 1.5;
+}
+
+.hist-stats {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.hist-stat-box {
+  text-align: center;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  min-width: 100px;
+}
+
+.hist-stat-box .number {
+  font-size: 26px;
+  font-weight: bold;
+  color: #ffd700;
+  font-family: monospace;
+}
+
+.hist-stat-box .label {
+  font-size: 11px;
+  opacity: 0.85;
+  text-transform: uppercase;
+}
+
+.hist-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+  margin-bottom: 25px;
+}
+
+@media (max-width: 968px) {
+  .hist-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hist-card {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.08);
+  border: 1px solid #eaeaea;
+}
+
+.hist-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.hist-card-header .icon {
+  width: 38px;
+  height: 38px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.hist-card-header h2 {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 3px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.hist-card-header .subtitle {
+  font-size: 12px;
+  color: #666;
+}
+
+.hist-upload-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.hist-upload-area {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 35px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 15px;
+  background: #fafafa;
+}
+
+.hist-upload-area:hover {
+  border-color: #4a2c1a;
+  background: #f5f5f5;
+}
+
+.hist-upload-area.dragover {
+  border-color: #4a2c1a;
+  background: #f0ebe5;
+}
+
+.hist-upload-area .upload-icon {
+  font-size: 42px;
+  margin-bottom: 10px;
+}
+
+.hist-upload-area .main-text {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.hist-upload-area .sub-text {
+  font-size: 12px;
+  color: #666;
+}
+
+.fierro-upload-area {
+  border: 2px dashed #4a2c1a;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #fafafa;
+  margin-bottom: 15px;
+}
+
+.fierro-upload-area:hover {
+  background: #f5f0ea;
+  border-color: #6b3f28;
+}
+
+.fierro-upload-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.btn-hist {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-hist-primary {
+  background: #4a2c1a;
+  color: white;
+}
+
+.btn-hist-primary:hover {
+  background: #6b3f28;
+  transform: translateY(-1px);
+}
+
+.btn-hist-secondary {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.btn-hist-secondary:hover {
+  background: #e0e0e0;
+}
+
+.btn-hist-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-hist-success:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.btn-hist-large {
+  padding: 15px 30px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.btn-hist-small {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.section-divider-hist {
+  margin: 15px 0 20px;
+  padding: 12px 15px;
+  background: #f8f8f8;
+  border-radius: 8px;
+  border-left: 4px solid #4a2c1a;
+}
+
+.section-divider-hist h4 {
+  font-size: 13px;
+  color: #4a2c1a;
+  margin-bottom: 3px;
+  font-weight: 700;
+}
+
+.section-divider-hist p {
+  font-size: 12px;
+  color: #666;
+}
+
+.fierro-dimensions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #4a2c1a;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.fierro-code {
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+  font-family: monospace;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.embedding-container-hist {
+  background: #f8f8f8;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 15px;
+  border: 1px solid #e8e8e8;
+}
+
+.embedding-header-hist {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.embedding-header-hist strong {
+  font-size: 13px;
+  color: #333;
+}
+
+.embedding-grid-hist {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.embedding-cell-hist {
+  height: 32px;
+  background: #4a2c1a;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.embedding-cell-hist.empty {
+  background: #e0e0e0;
+}
+
+.similarity-info-hist {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-family: monospace;
+}
+
+.hist-viewer-container {
+  position: relative;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f9f9f9;
+  margin-bottom: 15px;
+}
+
+.hist-viewer-image {
+  width: 100%;
+  min-height: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 20px;
+}
+
+.hist-detection-box {
+  position: absolute;
+  border: 3px solid #ffd700;
+  background: rgba(255, 215, 0, 0.15);
+  pointer-events: none;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+  width: 200px;
+  height: 200px;
+  left: calc(50% - 100px);
+  top: calc(50% - 100px);
+}
+
+.hist-detection-label {
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffd700;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hist-data-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .hist-data-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hist-data-field {
+  background: #f8f8f8;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.hist-data-field label {
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.hist-data-field input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  transition: border-color 0.3s;
+}
+
+.hist-data-field input:focus {
+  outline: none;
+  border-color: #4a2c1a;
+  box-shadow: 0 0 0 2px rgba(74, 44, 26, 0.15);
+}
+
+.hist-data-field .confidence {
+  font-size: 10px;
+  color: #28a745;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.compatibility-filter-hist {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.compatibility-filter-hist h3 {
+  font-size: 15px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #856404;
+  font-weight: 700;
+}
+
+.compatibility-filter-hist > p {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.filter-item-hist {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border: 1px solid #e0e0e0;
+}
+
+.filter-badge-hist {
+  background: #ffc107;
+  color: #333;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.filter-text-hist {
+  flex: 1;
+}
+
+.filter-text-hist strong {
+  font-size: 13px;
+  display: block;
+  margin-bottom: 3px;
+  color: #333;
+}
+
+.filter-text-hist small {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.action-buttons-hist {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+  flex-wrap: wrap;
+}
+
+.action-buttons-hist .btn-hist {
+  flex: 1;
+  min-width: 250px;
+  justify-content: center;
+}
+
+.modal-overlay-hist {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-box-hist {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  max-width: 550px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header-hist {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 25px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.modal-icon-hist {
+  width: 55px;
+  height: 55px;
+  background: linear-gradient(135deg, #4a2c1a 0%, #6b3f28 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.instruction-steps-hist {
+  list-style: none;
+  margin-bottom: 25px;
+  padding: 0;
+}
+
+.instruction-steps-hist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 15px;
+  margin-bottom: 12px;
+  background: #f8f8f8;
+  border-radius: 8px;
+  border-left: 4px solid #4a2c1a;
+  transition: all 0.3s;
+}
+
+.instruction-steps-hist li:hover {
+  background: #f0f0f0;
+  transform: translateX(5px);
+}
+
+.step-number-hist {
+  width: 32px;
+  height: 32px;
+  background: #4a2c1a;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.status-badge-hist {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #d4edda;
+  color: #155724;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+
+/* Guilloché and Security Document Background Patterns */
+.bg-guilloche-pattern {
+  background-color: #faf8f5;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(217, 119, 6, 0.03) 0%, transparent 60%),
+    repeating-linear-gradient(45deg, rgba(131, 24, 67, 0.015) 0px, rgba(131, 24, 67, 0.015) 2px, transparent 2px, transparent 12px),
+    repeating-linear-gradient(-45deg, rgba(21, 128, 61, 0.015) 0px, rgba(21, 128, 61, 0.015) 2px, transparent 2px, transparent 12px);
+}
+
+.bg-parchment {
+  background-color: #fdfbf7;
+  background-image: radial-gradient(#d97706 0.5px, transparent 0.5px), radial-gradient(#15803d 0.5px, #fdfbf7 0.5px);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+}
+
+/* Watermark styles */
+.watermark-panuco {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-25deg);
+  opacity: 0.035;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Print Optimization */
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Documento de Propiedad / Título Oficial: Tamaño Carta (Letter: 215.9mm x 279.4mm) */
+  .print-page-letter {
+    page-break-after: always;
+    break-after: page;
+    page-break-inside: avoid;
+    width: 100% !important;
+    max-width: 200mm !important;
+    max-height: 265mm !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+    padding: 2mm !important;
+    overflow: hidden !important;
+  }
+
+  /* Ficha de Registro Tradicional: Tamaño Carta de 1 sola hoja */
+  .ficha-tradicional-root {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    width: 100% !important;
+    max-width: 195mm !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+    padding: 6mm 8mm !important;
+    border: 1.5px solid #000000 !important;
+    box-shadow: none !important;
+  }
+
+  /* ID Card / Credencial Ganadera Oficial: Tamaño Tarjeta CR-80 (54mm x 85.6mm vertical o 85.6mm x 54mm horizontal) */
+  .print-card-sheet {
+    page-break-inside: avoid;
+    page-break-after: auto;
+    break-after: auto;
+    margin: 10mm auto !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .card-cr80-vertical {
+    width: 54mm !important;
+    height: 85.6mm !important;
+    min-width: 54mm !important;
+    min-height: 85.6mm !important;
+    max-width: 54mm !important;
+    max-height: 85.6mm !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .card-cr80-horizontal {
+    width: 85.6mm !important;
+    height: 54mm !important;
+    min-width: 85.6mm !important;
+    min-height: 54mm !important;
+    max-width: 85.6mm !important;
+    max-height: 54mm !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    size: letter portrait;
+    margin: 6mm 8mm;
+  }
+}
+

@@ -1,0 +1,238 @@
+# 📋 PLAN MAESTRO V3.3 — 11/Oct/2026
+
+**Estado actual:** FASE 0.4 (Ciclo del operador) · **100% completada** ✅
+
+---
+
+## ✅ COMPLETADO EN ESTA SESIÓN (10–11/Oct/2026)
+
+### 🔷 FASE 0.1 — Redirección al certificado
+- ✅ Después de "Guardar y Asentar Registro" → redirige al certificado.
+- ✅ Botón "Volver" del certificado respeta el tab de origen.
+
+### 🔷 FASE 0.2 — Volver + Botón en Certificado
+- ✅ `lastTabBeforeCertificadoRef` para recordar el tab anterior.
+- ✅ Botón "Generar Orden en Finanzas" en el certificado.
+- ✅ Modal de orden de cobro funcional.
+
+### 🔷 FASE 0.3 — Subida Diferida (Cloudinary)
+- ✅ **C1–C4:** INE, Firma, Foto, Fierro — subida diferida (1 sola vez).
+- ✅ **B1+B3:** `recordToGoogle` / `googleToRecord` mapean todas las URLs.
+- ✅ **Bloque A:** Portafolio con miniaturas reales (INE, Foto, Firma, Fierro).
+- ✅ **Bloque B:** Sello PAGADO en `ReciboPrintable`.
+- ✅ **Bloque C:** Botones 📷 y 👁️ en Finanzas.
+- ✅ **Bloque D:** Botones 📷 y 👁️ en Portafolio.
+- ✅ **Fixes críticos:** html2canvas-pro, timeout 60s, `buscarFilaPorFolio`, validación tolerante.
+
+### 🔷 FASE 0.4 — Ciclo del operador (100% ✅)
+
+| # | Fix | Estado |
+|---|-----|--------|
+| **P1** | Datos residuales al cerrar ciclo | ✅ |
+| **P2** | Duplicados por auto-save | ✅ |
+| **BLOQUE E** | Modal de validación entre hojas | ✅ |
+| **P4** | Recibo con sello PAGADO + sobrescritura por `fileId` | ✅ |
+| **FIX Validación** | Hoja 1–4 completa (excepto tel/email) | ✅ |
+| **FIX Anti-duplicidad** | Tiempo real (Nombre/CURP/INE) | ✅ |
+| **FIX Label Email** | "Obligatorio" → "Opcional" | ✅ |
+| **FIX OCR** | Limpieza de texto (espacios, abreviaturas, acentos) | ✅ |
+| **P5** | Buscador destacado ámbar siempre visible en el header | ✅ |
+| **QR System** | Escáner de QR en el Buscador → abre portafolio | ✅ |
+
+---
+
+## 🎯 PENDIENTES DE FASE 0.4 (los que faltan)
+
+| # | Fix | Complejidad |
+|---|-----|-------------|
+| **P3** | WhatsApp/Email en recibo desde Finanzas | 1 hr |
+| **P6** | Reabrir ciclo desde Finanzas | 1 hr |
+
+---
+
+## 🔵 FASES FUTURAS
+
+### FASE 5 — Bloqueo post-recibo
+**Objetivo:** Bloquear la edición del registro una vez generado el recibo + subida la evidencia.
+**Archivos:** `TabRegistro.tsx`, `App.tsx`, `types/index.ts`, `database.ts`, `Code.gs`.
+**Tiempo:** 2 hrs.
+
+### FASE 6 — Portafolio de evidencias unificado
+**Objetivo:** Crear `PortafolioEvidenciasModal.tsx` que unifique todas las evidencias.
+**Integrar en:** `TabBuscador`, `FinanceManager`, `ProductorAuditoriaModal`.
+**Tiempo:** 2–3 hrs.
+
+### FASE 7 — Testing E2E 5 trámites
+**Objetivo:** Probar los 5 trámites end-to-end (Alta, Revalidación, Baja, Constancia, Degüello).
+**Tiempo:** 3–4 hrs.
+
+---
+
+## 🆕 PROPUESTAS NUEVAS (detectadas en esta sesión)
+
+### 🟢 P7 — Fix de calidad en el certificado generado
+**Problemas detectados en el PDF `PAN-2026-04296`:**
+
+| # | Problema | Severidad |
+|---|----------|-----------|
+| 1 | Domicilio OCR sin espacios (en certificados antiguos) | 🟡 Media |
+| 2 | Acento faltante en "PANUCO" en algunos labels | 🟡 Media |
+| 3 | `SIMBAD` → debería ser `SINIIGA` (verificar) | 🟡 Media |
+| 4 | Formato de fecha inconsistente | 🟢 Baja |
+| 5 | QR duplicado (Página 1 y 2) — decidir cuál es oficial | 🟢 Baja |
+| 6 | Advertencia al operador: foto sin marca de agua | 🟡 Media |
+
+**Tiempo:** 1 hr.
+
+### 🟢 P8 — Endpoint `verificarFolio` en Apps Script
+**Objetivo:** Agregar acción `verificarFolio` que devuelva HTML con los datos del productor.
+**Uso:** Si el QR apunta a la URL de Apps Script, cualquier celular puede verificar la validez.
+**Tiempo:** 30 min.
+
+**Nota:** Actualmente el QR contiene JSON. Se puede dejar así (el lector interno lo parsea), o migrar a URL para verificación externa.
+
+### 🟢 P9 — Mejora del escáner QR
+**Mejoras posibles:**
+- Vibración al detectar QR (mobile).
+- Historial de escaneos recientes.
+- Botón "Compartir folio escaneado" por WhatsApp.
+**Tiempo:** 30 min.
+
+### 🟢 P10 — Firma del Director y Tesorero en credencial
+**Problema:** En la credencial CR-80, la firma del Director y Tesorero aparece como **texto itálico** (nombre). No es una firma autógrafa real.
+**Fix:** Agregar imágenes de firma de los funcionarios en `municipalConfig` y renderizarlas.
+**Tiempo:** 30 min.
+
+### 🟢 P11 — Exportación masiva de certificados
+**Objetivo:** Generar un ZIP con todos los certificados de un ejido, un año, o un filtro.
+**Uso:** Para archivo histórico, auditorías.
+**Tiempo:** 1.5 hrs.
+
+### 🟢 P12 — Notificaciones push de refrendo
+**Objetivo:** Enviar recordatorios automáticos por WhatsApp/Email 30 días antes de vencer la vigencia.
+**Requiere:** Cron / Apps Script trigger + integración WhatsApp Business.
+**Tiempo:** 3 hrs.
+
+### 🟢 P13 — Mapa interactivo del padrón
+**Objetivo:** Mostrar los predios en un mapa (Google Maps o Leaflet) con geolocalización de UPP.
+**Requiere:** Coordenadas GPS de predios.
+**Tiempo:** 4 hrs.
+
+### 🟢 P14 — Dashboard analítico
+**Objetivo:** Panel con gráficas:
+- Altas por mes.
+- Ejidos con más registros.
+- Estados del padrón (activos, cancelados, revalidados).
+- Recaudación por concepto.
+**Tiempo:** 3 hrs.
+
+### 🟢 P15 — Modo offline robusto
+**Problema:** Hoy existe cola offline básica. Si el operador está en campo sin internet, algunas operaciones fallan.
+**Fix:** Service Worker + IndexedDB para operaciones 100% offline con sync posterior.
+**Tiempo:** 6 hrs.
+
+### 🟢 P16 — Multi-usuario con roles
+**Estado actual:** `MunicipalUser` con roles (`Administrador`, `Oficial de Registro`, `Auditor`, `Inspector`).
+**Falta:** Restricciones reales por rol en cada tab.
+**Ejemplo:** Inspector no puede crear altas, solo consultar.
+**Tiempo:** 3 hrs.
+
+---
+
+## 📊 RESUMEN DEL ESTADO
+
+```
+PROYECTO GANADERIA FIERROS PANUCO V10
+─────────────────────────────────────────
+Bloques A–G (FASE 2 Plan Maestro)    ✅ 100%
+
+FASE 0.1 Redirección                 ✅ 100%
+FASE 0.2 Volver + Botón              ✅ 100%
+FASE 0.3 Subida Diferida             ✅ 100%
+FASE 0.3 Bloque A–D                  ✅ 100%
+FASE 0.3 Fixes críticos              ✅ 100%
+
+FASE 0.4 Ciclo del operador          ✅ 100%  ← CERRADA
+  ├─ P1 Limpieza real                ✅
+  ├─ P2 Duplicados                   ✅
+  ├─ BLOQUE E Validación hojas       ✅
+  ├─ P4 Recibo con sello PAGADO      ✅
+  ├─ FIX Validación Hoja 1–4         ✅
+  ├─ FIX Anti-duplicidad tiempo real ✅
+  ├─ FIX OCR (limpieza de texto)     ✅
+  ├─ P5 Buscador en header           ✅
+  └─ QR System (escáner)             ✅
+
+PENDIENTES FASE 0.4
+  ├─ P3 WhatsApp/Email en recibo     ⏳ 1 hr
+  └─ P6 Reabrir ciclo desde Finanzas ⏳ 1 hr
+
+FASE 5 Bloqueo post-recibo           ⏳ 0%
+FASE 6 Portafolio evidencias         ⏳ 0%
+FASE 7 Testing E2E 5 trámites        ⏳ 0%
+
+PROPUESTAS NUEVAS (P7–P16)           ⏳ backlog
+```
+
+---
+
+## 📌 DECISIONES PENDIENTES
+
+| # | Decisión | Estado |
+|---|----------|--------|
+| 1 | ¿Priorizar P3 (WhatsApp) o P6 (Reabrir ciclo)? | ⏳ Pendiente |
+| 2 | ¿Migrar QR a URL de Apps Script (`verificarFolio`)? | ⏳ Pendiente |
+| 3 | ¿Qué P7 (certificado) atacar primero? | ⏳ Pendiente |
+| 4 | ¿FASE 5 (bloqueo) requiere aprobación de admin? | ⏳ Pendiente |
+| 5 | ¿Implementar notificaciones push de refrendo (P12)? | ⏳ Pendiente |
+| 6 | ¿Dashboard analítico (P14) es prioridad? | ⏳ Pendiente |
+
+---
+
+## 🎯 ACCIÓN INMEDIATA — MI RECOMENDACIÓN
+
+### Ruta corta (cerrar FASE 0.4 al 100%)
+
+**1. P3 — WhatsApp/Email en recibo** (1 hr)
+- Reutilizar `DocumentDispatchSection` que ya existe.
+- Agregar botones en el modal de recibo en Finanzas.
+
+**2. P6 — Reabrir ciclo desde Finanzas** (1 hr)
+- Botón "Reabrir en Registros" en cada fila de Finanzas.
+- Carga el productor en `TabRegistro` con todos sus datos.
+
+**Total:** 2 hrs → **FASE 0.4 al 100%** ✅
+
+### Ruta media (mejoras críticas)
+
+**3. P7 — Fix del certificado** (1 hr)
+- Acentos, `SIMBAD` → `SINIIGA`, formato de fechas.
+
+**4. P10 — Firmas reales del Director y Tesorero** (30 min)
+- Imágenes de firma en `municipalConfig`.
+
+**5. P8 — Endpoint `verificarFolio`** (30 min)
+- Migrar el QR para verificación externa.
+
+**Total:** 2 hrs adicionales.
+
+### Ruta larga (features nuevas)
+
+**6. FASE 5 — Bloqueo post-recibo** (2 hrs)
+**7. FASE 6 — Portafolio unificado** (3 hrs)
+**8. FASE 7 — Testing E2E** (4 hrs)
+**9. P14 — Dashboard analítico** (3 hrs)
+**10. P12 — Notificaciones push** (3 hrs)
+
+**Total:** 15 hrs adicionales.
+
+---
+
+## ❓ Respóndeme
+
+1. **¿Atacamos P3 + P6 para cerrar FASE 0.4 al 100%?**
+2. **¿O prefieres P7 (fix certificado) + P10 (firmas) primero?**
+3. **¿O vamos directo a FASE 5 (bloqueo) / FASE 6 (portafolio)?**
+4. **¿Alguna propuesta nueva (P8–P16) que quieras priorizar?**
+
+Dime el orden y arrancamos. 🛠️

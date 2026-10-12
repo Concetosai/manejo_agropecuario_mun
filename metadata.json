@@ -1,0 +1,8 @@
+{
+  "name": "Sistema de Fierro Quemador Pánuco V9",
+  "description": "Sistema Oficial de Registro, Creador Antiduplicidad y Certificación de Fierro Quemador del H. Ayuntamiento de Pánuco, Veracruz.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
