@@ -118,7 +118,7 @@ async function callGroqVision(imageBase64: string, prompt: string): Promise<any 
       return null;
     }
 
-    const data = await response.json();
+    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
     const content = data.choices?.[0]?.message?.content;
     if (content) {
       try {
@@ -169,7 +169,7 @@ async function callOllamaVision(imageBase64: string, prompt: string): Promise<an
       return null;
     }
 
-    const data = await response.json();
+    const data = await response.json() as { response?: string };
     const content = data.response;
     if (content) {
       try {
@@ -433,12 +433,44 @@ app.post('/api/ai/scan-ine', async (req, res) => {
     }
 
     // ─────────────────────────────────────────────────────────────
+    // Prompt para Groq (mismo que Gemini)
+    const groqPromptText = `Actúa como el sistema pericial de digitalización y OCR de credenciales para votar (INE / IFE) del Gobierno Municipal de Pánuco, Veracruz.
+Analiza con máxima precisión la imagen adjunta.
+
+INSTRUCCIONES CRÍTICAS:
+1. Extrae EXCLUSIVAMENTE el bloque de texto (NOMBRE, DOMICILIO, CURP, RFC, CLAVE DE ELECTOR).
+2. IGNORA: fotografía, holograma, código de barras MRZ, SEXO, EDAD, AÑO DE REGISTRO, SECCIÓN.
+3. NUNCA concatenes etiquetas ruidosas dentro del nombre.
+4. VALIDA CURP (18 caracteres) contra el nombre del titular.
+5. DEVUELVE CADENA VACÍA "" si un campo es ilegible. NO INVENTES DATOS.
+
+Responde ÚNICAMENTE en JSON con esta estructura:
+{
+  "isIne": true,
+  "fullName": "NOMBRE COMPLETO",
+  "names": "NOMBRES",
+  "firstLastName": "APELLIDO PATERNO",
+  "secondLastName": "APELLIDO MATERNO",
+  "curp": "CURP O VACÍO",
+  "rfc": "RFC O VACÍO",
+  "ine": "CLAVE DE ELECTOR",
+  "address": "DOMICILIO COMPLETO",
+  "municipio": "Pánuco",
+  "state": "Veracruz",
+  "ejido": "EJIDO O Cabecera Municipal",
+  "section": "SECCIÓN",
+  "validity": "VIGENCIA",
+  "cic": "CIC",
+  "birthDate": "YYYY-MM-DD",
+  "gender": "H o M",
+  "suggestedInitials": "INICIALES"
+}`;
     // MOTOR 0: Groq Vision (Llama 4 Scout) — PRIMARIO
     // ─────────────────────────────────────────────────────────────
     console.log('[OCR-Cascade] Motor 0: Intentando Groq Vision');
 
     try {
-      const groqResult = await callGroqVision(imageBase64, promptText);
+      const groqResult = await callGroqVision(imageBase64, groqPromptText);
       if (groqResult && groqResult.isIne !== false && (groqResult.fullName || groqResult.curp || groqResult.ine)) {
         // Aplicar pipeline de validación cruzada
         const sanitizedName = cleanIneName(groqResult.fullName || `${groqResult.names || ''} ${groqResult.firstLastName || ''} ${groqResult.secondLastName || ''}`);
