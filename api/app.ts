@@ -81,18 +81,24 @@ export function createApp(): Express {
   const app = express();
   app.use(express.json({ limit: '10mb' }));
 
-  // Initialize server-side Gemini client
+  // Initialize server-side Gemini client (con try/catch para Vercel)
   const apiKey = process.env.GEMINI_API_KEY;
-  const ai = apiKey
-    ? new GoogleGenAI({
+  let ai: any = null;
+  if (apiKey && GoogleGenAI) {
+    try {
+      ai = new GoogleGenAI({
         apiKey,
         httpOptions: {
           headers: {
             'User-Agent': 'aistudio-build',
           },
         },
-      })
-    : null;
+      });
+    } catch (e) {
+      console.warn('[Init] No se pudo inicializar GoogleGenAI:', e);
+      ai = null;
+    }
+  }
 
   // AI Assistant API Route
   app.post('/api/ai/assistant', async (req, res) => {
