@@ -43,7 +43,7 @@ async function callPaddleOCRService(imageBase64: string): Promise<{ full_text: s
       console.warn('PaddleOCR microservice returned error status:', response.status);
       return null;
     }
-    const data = await response.json();
+    const data = await response.json() as { success?: boolean; full_text?: string; lines?: any[] };
     if (data.success && data.full_text) {
       return { full_text: data.full_text, lines: data.lines };
     }
