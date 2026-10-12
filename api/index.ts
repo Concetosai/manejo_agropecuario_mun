@@ -1,19 +1,15 @@
-// Vercel Serverless Function unica bajo /api
-// NO llama createApp() al cargar (evita crash si algun import pesado falla).
-// En su lugar, crea la app DENTRO del handler, con try/catch.
-
 import type { Express } from 'express';
 
 let cachedApp: Express | null = null;
 let cachedError: Error | null = null;
 
-function getApp(): Express {
+async function getApp(): Promise<Express> {
   if (cachedApp) return cachedApp;
   if (cachedError) throw cachedError;
 
   try {
-    const { createApp } = require('./app');
-    cachedApp = createApp();
+    const mod = await import('./app.js');
+    cachedApp = mod.createApp();
     return cachedApp;
   } catch (err: any) {
     cachedError = err;
@@ -24,7 +20,7 @@ function getApp(): Express {
 
 export default async function handler(req: any, res: any) {
   try {
-    const app = getApp();
+    const app = await getApp();
     return app(req, res);
   } catch (err: any) {
     console.error('[api/index] Handler error:', err);

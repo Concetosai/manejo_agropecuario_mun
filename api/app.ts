@@ -1,19 +1,7 @@
 import express, { type Express } from 'express';
 import dotenv from 'dotenv';
-// Lazy import para Vercel (evita crash al arrancar)
-let GoogleGenAI: any = null;
-try {
-  GoogleGenAI = require('@google/genai').GoogleGenAI;
-} catch (e) {
-  console.warn('[LazyImport] GoogleGenAI no disponible:', e);
-}
-// Lazy import para Vercel (evita crash al arrancar)
-let Tesseract: any = null;
-try {
-  Tesseract = require('tesseract.js');
-} catch (e) {
-  console.warn('[LazyImport] Tesseract no disponible:', e);
-}
+import { GoogleGenAI } from '@google/genai';
+import Tesseract from 'tesseract.js';
 import crypto from 'crypto';
 import {
   parseIneTextWithCrossValidation,
@@ -84,7 +72,7 @@ export function createApp(): Express {
   // Initialize server-side Gemini client (con try/catch para Vercel)
   const apiKey = process.env.GEMINI_API_KEY;
   let ai: any = null;
-  if (apiKey && GoogleGenAI) {
+  if (apiKey) {
     try {
       ai = new GoogleGenAI({
         apiKey,
