@@ -65,6 +65,130 @@ CAPACIDADES DE ANÁLISIS DE LA BASE DE DATOS DE LA APLICACIÓN:
 - Cuando el usuario te pregunte por duplicidad, similitud, estadísticas del padrón o revisión de su formulario, analiza detenidamente los datos provistos en el contexto y ofrece dictámenes claros (Aprobado, En Observación o Rechazado).
 - Responde siempre en español formal pero cercano, con terminología ganadera veracruzana auténtica (e.g. fierro quemador, herraje, aretado SINIIGA, tenencia de la tierra, hato pecuario).`;
 
+
+// =========================================================================
+// FUNCIÓN AUXILIAR: Llamar a Groq Vision (Llama 4 Scout)
+// =========================================================================
+async function callGroqVision(imageBase64: string, prompt: string): Promise<any | null> {
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) {
+    console.warn('[Groq] GROQ_API_KEY no configurada');
+    return null;
+  }
+
+  try {
+    let cleanBase64 = imageBase64;
+    let mimeType = 'image/jpeg';
+    if (cleanBase64.includes('base64,')) {
+      const parts = cleanBase64.split('base64,');
+      const meta = parts[0];
+      if (meta.includes('image/png')) mimeType = 'image/png';
+      else if (meta.includes('image/webp')) mimeType = 'image/webp';
+      cleanBase64 = parts[1];
+    }
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + groqKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image_url',
+                image_url: { url: 'data:' + mimeType + ';base64,' + cleanBase64 },
+              },
+            ],
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 2000,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('[Groq] Error HTTP:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (content) {
+      try {
+        return JSON.parse(content);
+      } catch {
+        return { raw: content };
+      }
+    }
+    return null;
+  } catch (err) {
+    console.warn('[Groq] Excepcion:', err);
+    return null;
+  }
+}
+
+// =========================================================================
+// FUNCIÓN AUXILIAR: Llamar a Ollama Vision (llava:7b)
+// =========================================================================
+async function callOllamaVision(imageBase64: string, prompt: string): Promise<any | null> {
+  const ollamaUrl = process.env.OLLAMA_URL;
+  const ollamaModel = process.env.OLLAMA_MODEL || 'llava:7b';
+  if (!ollamaUrl) {
+    console.warn('[Ollama] OLLAMA_URL no configurada');
+    return null;
+  }
+
+  try {
+    let cleanBase64 = imageBase64;
+    if (cleanBase64.includes('base64,')) {
+      cleanBase64 = cleanBase64.split('base64,')[1];
+    }
+
+    const response = await fetch(ollamaUrl + '/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: ollamaModel,
+        prompt: prompt,
+        images: [cleanBase64],
+        stream: false,
+        format: 'json',
+        options: { temperature: 0.1 },
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('[Ollama] Error HTTP:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.response;
+    if (content) {
+      try {
+        return JSON.parse(content);
+      } catch {
+        return { raw: content };
+      }
+    }
+    return null;
+  } catch (err) {
+    console.warn('[Ollama] Excepcion:', err);
+    return null;
+  }
+}
+
+
+// =========================================================================
+// FUNCIÓN AUXILIAR: Groq Vision (Llama 4 Scout) — Motor Primario
+// =========================================================================
 export function createApp(): Express {
   const app = express();
   app.use(express.json({ limit: '10mb' }));
@@ -191,259 +315,356 @@ export function createApp(): Express {
   // =========================================================================
   // INE / IFE OCR SCANNER API ROUTE (Multimodal Gemini + Intelligent Fallback)
   // =========================================================================
-  app.post('/api/ai/scan-ine', async (req, res) => {
+  // =========================================================================
+// INE / IFE OCR SCANNER API ROUTE
+// Motores en cascada: PaddleOCR → Gemini → Tesseract
+// =========================================================================
+app.post('/api/ai/scan-ine', async (req, res) => {
+  try {
+    const { imageBase64, mimeType = 'image/jpeg', sampleId } = req.body;
+
+    // ─────────────────────────────────────────────────────────────
+    // 0. Sample Presets (datos de prueba)
+    // ─────────────────────────────────────────────────────────────
+    if (sampleId === 'huasteca') {
+      return res.json({
+        success: true,
+        source: 'sample-panuco-don-aurelio',
+        data: {
+          fullName: 'AURELIO GUZMÁN ARADILLAS',
+          names: 'AURELIO',
+          firstLastName: 'GUZMÁN',
+          secondLastName: 'ARADILLAS',
+          curp: 'GUAA620415HVRRRN08',
+          rfc: 'GUAA6204159Z4',
+          ine: 'GUAAAR62041530H100',
+          address: 'CARRETERA PÁNUCO-TEMPOAL KM 14, INTERIOR 2',
+          municipio: 'Pánuco',
+          state: 'Veracruz',
+          ejido: 'Reventadero',
+          section: '2841',
+          validity: '2024 - 2034',
+          cic: '084129573',
+          birthDate: '1962-04-15',
+          gender: 'H',
+          suggestedInitials: 'AG',
+          confidenceScore: 98,
+          confidenceLevel: 'alta',
+          fieldStatus: { name: 'valido', curp: 'valido', rfc: 'valido', address: 'valido', ine: 'valido' },
+          validationErrors: [],
+          crossValidationWarnings: [],
+          notes: 'Credencial para Votar Modelo G validada con éxito.',
+        },
+      });
+    }
+
+    if (sampleId === 'reventadero') {
+      return res.json({
+        success: true,
+        source: 'sample-panuco-dona-rosa',
+        data: {
+          fullName: 'ROSA ELENA PECERO ZÚÑIGA',
+          names: 'ROSA ELENA',
+          firstLastName: 'PECERO',
+          secondLastName: 'ZÚÑIGA',
+          curp: 'PEZR740920MVRSLS03',
+          rfc: 'PEZR740920AA2',
+          ine: 'PEZRE74092030M200',
+          address: 'AV. HIDALGO NO. 45, CONGREGACIÓN TAMOS',
+          municipio: 'Pánuco',
+          state: 'Veracruz',
+          ejido: 'Tamos',
+          section: '2845',
+          validity: '2023 - 2033',
+          cic: '091523481',
+          birthDate: '1974-09-20',
+          gender: 'M',
+          suggestedInitials: 'RP',
+          confidenceScore: 98,
+          confidenceLevel: 'alta',
+          fieldStatus: { name: 'valido', curp: 'valido', rfc: 'valido', address: 'valido', ine: 'valido' },
+          validationErrors: [],
+          crossValidationWarnings: [],
+          notes: 'Credencial para Votar Modelo F validada con éxito.',
+        },
+      });
+    }
+
+    if (sampleId === 'rodrigo') {
+      return res.json({
+        success: true,
+        source: 'sample-panuco-rodrigo-hernandez',
+        data: {
+          fullName: 'HERNANDEZ RAMOS RODRIGO',
+          names: 'RODRIGO',
+          firstLastName: 'HERNANDEZ',
+          secondLastName: 'RAMOS',
+          curp: 'HERR730609HVRRMR01',
+          rfc: 'HERR730609HB8',
+          ine: 'HRRMRD73060930H100',
+          address: 'BLVD IGNACIO ALLENDE 302, ZONA CENTRO, C.P. 93990',
+          municipio: 'Pánuco',
+          state: 'Veracruz',
+          ejido: 'Cabecera Municipal',
+          section: '2841',
+          validity: '2024 - 2034',
+          cic: '073609124',
+          birthDate: '1973-06-09',
+          gender: 'H',
+          suggestedInitials: 'HR',
+          confidenceScore: 98,
+          confidenceLevel: 'alta',
+          fieldStatus: { name: 'valido', curp: 'valido', rfc: 'valido', address: 'valido', ine: 'valido' },
+          validationErrors: [],
+          crossValidationWarnings: [],
+          notes: 'Credencial para Votar validada exitosamente.',
+        },
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Validación de imagen
+    // ─────────────────────────────────────────────────────────────
+    if (!imageBase64) {
+      return res.status(400).json({
+        success: false,
+        error: 'No se recibió la imagen o fotografía de la credencial INE.',
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // MOTOR 0: Groq Vision (Llama 4 Scout) — PRIMARIO
+    // ─────────────────────────────────────────────────────────────
+    console.log('[OCR-Cascade] Motor 0: Intentando Groq Vision');
+
     try {
-      const { imageBase64, mimeType = 'image/jpeg', sampleId } = req.body;
+      const groqResult = await callGroqVision(imageBase64, promptText);
+      if (groqResult && groqResult.isIne !== false && (groqResult.fullName || groqResult.curp || groqResult.ine)) {
+        // Aplicar pipeline de validación cruzada
+        const sanitizedName = cleanIneName(groqResult.fullName || `${groqResult.names || ''} ${groqResult.firstLastName || ''} ${groqResult.secondLastName || ''}`);
+        const curpCheck = crossValidateCurp(
+          groqResult.curp || '',
+          sanitizedName.firstLastName,
+          sanitizedName.secondLastName,
+          sanitizedName.names
+        );
+        const rfcCheck = crossValidateRfc(
+          groqResult.rfc || '',
+          sanitizedName.firstLastName,
+          sanitizedName.secondLastName,
+          sanitizedName.names,
+          groqResult.curp
+        );
+        const addressCheck = cleanIneAddress(groqResult.address || '', groqResult.ejido || '');
 
-      // 1. Direct Sample Preset Demos for fast testing and QA verification
-      if (sampleId === 'huasteca') {
-        return res.json({
-          success: true,
-          source: 'sample-panuco-don-aurelio',
-          data: {
-            fullName: 'AURELIO GUZMÁN ARADILLAS',
-            names: 'AURELIO',
-            firstLastName: 'GUZMÁN',
-            secondLastName: 'ARADILLAS',
-            curp: 'GUAA620415HVRRRN08',
-            rfc: 'GUAA6204159Z4',
-            ine: 'GUAAAR62041530H100',
-            address: 'CARRETERA PÁNUCO-TEMPOAL KM 14, INTERIOR 2',
-            municipio: 'Pánuco',
-            state: 'Veracruz',
-            ejido: 'Reventadero',
-            section: '2841',
-            validity: '2024 - 2034',
-            cic: '084129573',
-            birthDate: '1962-04-15',
-            gender: 'H',
-            suggestedInitials: 'AG',
-            confidenceScore: 98,
-            confidenceLevel: 'alta',
-            fieldStatus: {
-              name: 'valido',
-              curp: 'valido',
-              rfc: 'valido',
-              address: 'valido',
-              ine: 'valido',
-            },
-            validationErrors: [],
-            crossValidationWarnings: [],
-            notes: 'Credencial para Votar Modelo G validada con éxito. Residencia acreditada en Municipio de Pánuco, Ver.',
-          },
-        });
-      }
+        let validatedCurp = groqResult.curp || '';
+        let validatedRfc = groqResult.rfc || '';
+        const crossValidationWarnings: string[] = [];
 
-      if (sampleId === 'reventadero') {
-        return res.json({
-          success: true,
-          source: 'sample-panuco-dona-rosa',
-          data: {
-            fullName: 'ROSA ELENA PECERO ZÚÑIGA',
-            names: 'ROSA ELENA',
-            firstLastName: 'PECERO',
-            secondLastName: 'ZÚÑIGA',
-            curp: 'PEZR740920MVRSLS03',
-            rfc: 'PEZR740920AA2',
-            ine: 'PEZRE74092030M200',
-            address: 'AV. HIDALGO NO. 45, CONGREGACIÓN TAMOS',
-            municipio: 'Pánuco',
-            state: 'Veracruz',
-            ejido: 'Tamos',
-            section: '2845',
-            validity: '2023 - 2033',
-            cic: '091523481',
-            birthDate: '1974-09-20',
-            gender: 'M',
-            suggestedInitials: 'RP',
-            confidenceScore: 98,
-            confidenceLevel: 'alta',
-            fieldStatus: {
-              name: 'valido',
-              curp: 'valido',
-              rfc: 'valido',
-              address: 'valido',
-              ine: 'valido',
-            },
-            validationErrors: [],
-            crossValidationWarnings: [],
-            notes: 'Credencial para Votar Modelo F validada con éxito. Residencia acreditada en Municipio de Pánuco, Ver.',
-          },
-        });
-      }
-
-      if (sampleId === 'rodrigo') {
-        return res.json({
-          success: true,
-          source: 'sample-panuco-rodrigo-hernandez',
-          data: {
-            fullName: 'HERNANDEZ RAMOS RODRIGO',
-            names: 'RODRIGO',
-            firstLastName: 'HERNANDEZ',
-            secondLastName: 'RAMOS',
-            curp: 'HERR730609HVRRMR01',
-            rfc: 'HERR730609HB8',
-            ine: 'HRRMRD73060930H100',
-            address: 'BLVD IGNACIO ALLENDE 302, ZONA CENTRO, C.P. 93990',
-            municipio: 'Pánuco',
-            state: 'Veracruz',
-            ejido: 'Cabecera Municipal',
-            section: '2841',
-            validity: '2024 - 2034',
-            cic: '073609124',
-            birthDate: '1973-06-09',
-            gender: 'H',
-            suggestedInitials: 'HR',
-            confidenceScore: 98,
-            confidenceLevel: 'alta',
-            fieldStatus: {
-              name: 'valido',
-              curp: 'valido',
-              rfc: 'valido',
-              address: 'valido',
-              ine: 'valido',
-            },
-            validationErrors: [],
-            crossValidationWarnings: [],
-            notes: 'Credencial para Votar validada exitosamente con concordancia cruzada HERNANDEZ -> HERR.',
-          },
-        });
-      }
-
-      if (!imageBase64) {
-        return res.status(400).json({
-          success: false,
-          error: 'No se recibió la imagen o fotografía de la credencial INE.',
-        });
-      }
-
-      // If Gemini AI client is initialized, execute multimodal OCR analysis with strict ROI & Cross-Validation
-      if (ai) {
-        let cleanBase64 = imageBase64;
-        if (cleanBase64.includes('base64,')) {
-          cleanBase64 = cleanBase64.split('base64,')[1];
+        if (validatedCurp && !curpCheck.matchesName) {
+          crossValidationWarnings.push(curpCheck.errorMessage || 'CURP no coincide con el nombre.');
+          validatedCurp = '';
+        }
+        if (validatedRfc && !rfcCheck.matchesName) {
+          crossValidationWarnings.push(rfcCheck.errorMessage || 'RFC no coincide con el nombre.');
+          validatedRfc = '';
         }
 
-        const promptText = `Actúa como el sistema pericial de digitalización y OCR de credenciales para votar (INE / IFE) del Gobierno Municipal de Pánuco, Veracruz.
+        const { suggestedInitials } = computeExpectedInitials(
+          sanitizedName.firstLastName,
+          sanitizedName.secondLastName,
+          sanitizedName.names
+        );
+
+        const confidence = calculateRealConfidenceScore({
+          isNameValid: sanitizedName.isValid,
+          nameWordsCount: sanitizedName.fullName.split(/\s+/).length,
+          noiseTokensCount: sanitizedName.noiseDetected.length,
+          isCurpValidFormat: curpCheck.isValidFormat,
+          curpMatchesName: curpCheck.matchesName,
+          hasCurp: Boolean(validatedCurp),
+          isRfcValidFormat: Boolean(validatedRfc && MEXICAN_RFC_REGEX.test(validatedRfc)),
+          rfcMatchesName: Boolean(validatedRfc && rfcCheck.matchesName),
+          hasRfc: Boolean(validatedRfc),
+          isAddressDetailed: addressCheck.isDetailed,
+          hasAddress: Boolean(addressCheck.address),
+          hasIneKey: Boolean(groqResult.ine && groqResult.ine.length >= 10),
+        });
+
+        console.log('[OCR-Cascade] Motor 0 (Groq) exito');
+        return res.json({
+          success: true,
+          source: 'groq-llama-4-scout-ocr',
+          data: {
+            fullName: sanitizedName.fullName,
+            names: sanitizedName.names,
+            firstLastName: sanitizedName.firstLastName,
+            secondLastName: sanitizedName.secondLastName,
+            curp: validatedCurp,
+            rfc: validatedRfc,
+            ine: groqResult.ine || '',
+            address: addressCheck.address,
+            municipio: addressCheck.municipio,
+            state: addressCheck.state,
+            ejido: addressCheck.ejido || 'Cabecera Municipal',
+            section: groqResult.section || '',
+            validity: groqResult.validity || '',
+            cic: groqResult.cic || '',
+            birthDate: groqResult.birthDate || '',
+            gender: groqResult.gender || '',
+            suggestedInitials,
+            confidenceScore: confidence.score,
+            confidenceLevel: confidence.level,
+            fieldStatus: {
+              name: sanitizedName.isValid ? 'valido' : 'error',
+              curp: validatedCurp && curpCheck.isValidFormat ? 'valido' : 'error',
+              rfc: validatedRfc ? 'valido' : 'alerta',
+              address: addressCheck.isDetailed ? 'valido' : 'alerta',
+              ine: groqResult.ine ? 'valido' : 'alerta',
+            },
+            validationErrors: [],
+            crossValidationWarnings,
+            notes: 'Credencial validada con motor Groq (Llama 4 Scout) + verificacion cruzada.',
+          },
+        });
+      }
+    } catch (groqErr: any) {
+      console.warn('[OCR-Cascade] Motor 0 (Groq) fallo:', groqErr.message);
+    }
+
+
+    // ─────────────────────────────────────────────────────────────
+    // MOTOR 1: PaddleOCR (servidor Debian 192.168.1.13:8001)
+    // Especializado en INEs mexicanas, gratuito, rápido.
+    // ─────────────────────────────────────────────────────────────
+    try {
+      const paddleUrl = process.env.PADDLE_OCR_URL || 'http://192.168.1.13:8001/ocr';
+      console.log('[OCR-Cascade] Motor 1: Intentando PaddleOCR en ' + paddleUrl);
+
+      const paddleResponse = await fetch(paddleUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_base64: imageBase64 }),
+        signal: AbortSignal.timeout(15000), // 15s timeout
+      });
+
+      if (paddleResponse.ok) {
+        const paddleData = await paddleResponse.json();
+        if (paddleData.success && paddleData.full_text) {
+          console.log('[OCR-Cascade] OK: PaddleOCR respondió correctamente');
+
+          // Procesar con el parser de líneas
+          const parsedResult = parseIneTextWithCrossValidation(
+            paddleData.full_text,
+            paddleData.lines
+          );
+
+          if (parsedResult.fullName || parsedResult.curp || parsedResult.ine) {
+            return res.json({
+              success: true,
+              source: 'paddleocr-debian-server',
+              rawText: paddleData.full_text,
+              data: parsedResult,
+            });
+          }
+        }
+      }
+      console.warn('[OCR-Cascade] PaddleOCR no respondió o no detectó texto válido');
+    } catch (paddleErr: any) {
+      console.warn('[OCR-Cascade] Motor 1 falló:', paddleErr.message);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // MOTOR 2: Gemini (si GEMINI_API_KEY está configurado)
+    // ─────────────────────────────────────────────────────────────
+    if (ai) {
+      console.log('[OCR-Cascade] Motor 2: Intentando Gemini');
+
+      let cleanBase64 = imageBase64;
+      if (cleanBase64.includes('base64,')) {
+        cleanBase64 = cleanBase64.split('base64,')[1];
+      }
+
+      const promptText = `Actúa como el sistema pericial de digitalización y OCR de credenciales para votar (INE / IFE) del Gobierno Municipal de Pánuco, Veracruz.
 Analiza con máxima precisión la imagen adjunta.
 
-INSTRUCCIONES CRÍTICAS DE SEGMENTACIÓN POR REGIONES DE INTERÉS (GRID INE):
+INSTRUCCIONES CRÍTICAS:
 1. SEGMENTACIÓN: Extrae EXCLUSIVAMENTE el bloque de texto izquierdo/central (NOMBRE, DOMICILIO, CURP, RFC, CLAVE DE ELECTOR).
-2. ZONAS A IGNORAR: Ignora por completo:
-   - La fotografía del ciudadano (extremo izquierdo).
-   - El holograma y sello óptico (extremo derecho).
-   - El código de barras óptico inferior (MRZ / zona de lectura mecánica).
-   - Los campos auxiliares de "SEXO", "EDAD", "AÑO DE REGISTRO", "SECCIÓN".
-3. LIMPIEZA DE NOMBRE:
-   - NUNCA concatenes "SEXO H", "SEXO M", "EDAD" ni prefijos ruidosos de escaneo como "ETE" dentro del nombre.
-   - El nombre debe contener única y exclusivamente letras alfabéticas y espacios (ej. "HERNANDEZ RAMOS RODRIGO").
-   - Identifica el apellido paterno, apellido materno y nombres por separado.
-4. VALIDACIÓN DE CURP (18 CARACTERES):
-   - Valida estrictamente contra la expresión regular mexicana: ^[A-Z]{4}\\d{6}[HM][A-Z]{5}[A-Z0-9]\\d$
-   - VALIDACIÓN CRUZADA OBLIGATORIA: Las primeras letras de la CURP DEBEN coincidir con los apellidos del titular (para "HERNANDEZ RAMOS RODRIGO" la CURP DEBE empezar con "HERR" o "HER").
-   - Si la CURP no coincide con el nombre o es ilegible, DEVUELVE CADENA VACÍA "" y no inventes datos de terceros (PROHIBIDO devolver GUAA o datos de Don Aurelio si el titular es Hernández).
-5. VALIDACIÓN DE RFC:
-   - Debe tener 10 o 13 caracteres alfanuméricos.
-   - Si no es visible con homoclave, utiliza la base de 10 caracteres derivada de las iniciales reales del nombre y fecha (ej. HERR730609). PROHIBIDO inventar iniciales aleatorias (como RMRD si el titular es HERNANDEZ).
-6. DOMICILIO COMPLETO:
-   - Extrae la cadena completa exacta de calle, número exterior/interior, colonia y código postal (ej. "BLVD IGNACIO ALLENDE 302, ZONA CENTRO 93990").
-   - NO reemplaces arbitrariamente por ningún ejido a menos que esté explícitamente escrito en el plástico.
-7. PUNTUACIÓN DE CONFIABILIDAD REAL (0-100):
-   - Calcula una puntuación realista basada en la legibilidad y coherencia cruzada.
-   - Si falta la CURP o hubo inconsistencias, asigna una puntuación baja (ej. 35 - 55%). NUNCA devuelvas 98% fijo si hay datos dudosos.
-
-Si la imagen no es un INE/IFE legible:
-{
-  "isIne": false,
-  "error": "No se detectó una credencial para votar INE/IFE válida en la imagen. Ajuste la orientación (horizontal o vertical) o tome una nueva fotografía con buena iluminación."
-}
+2. ZONAS A IGNORAR: fotografía, holograma, código de barras inferior, SEXO, EDAD, SECCIÓN.
+3. LIMPIEZA DE NOMBRE: NUNCA concatenes "SEXO H", "SEXO M", "EDAD" ni prefijos ruidosos.
+4. CURP: valida contra ^[A-Z]{4}\\d{6}[HM][A-Z]{5}[A-Z0-9]\\d$. Si no coincide con el nombre, devuelve "".
+5. RFC: 10 o 13 caracteres. Si no es visible, devuelve "".
+6. DOMICILIO: cadena completa exacta de calle, número, colonia y C.P.
+7. CONFIABILIDAD: puntuación realista (35-55% si es dudoso, NUNCA 98% fijo).
 
 Si es legible, devuelve exactamente este JSON:
 {
   "isIne": true,
-  "fullName": "NOMBRE COMPLETO EN MAYÚSCULAS SIN ETIQUETAS DE GÉNERO NI RUIDO",
-  "names": "NOMBRE(S)",
-  "firstLastName": "PRIMER APELLIDO (PATERNO)",
-  "secondLastName": "SEGUNDO APELLIDO (MATERNO)",
-  "curp": "CURP DE 18 CARACTERES VÁLIDA Y CONGRUENTE O CADENA VACÍA SI ES DUDOSA",
-  "rfc": "RFC CONGRUENTE CON EL NOMBRE O CADENA VACÍA",
-  "ine": "CLAVE DE ELECTOR DE 18 CARACTERES",
-  "address": "CALLE Y NÚMERO, COLONIA O LOCALIDAD, CÓDIGO POSTAL EXACTO",
+  "fullName": "...",
+  "names": "...",
+  "firstLastName": "...",
+  "secondLastName": "...",
+  "curp": "...",
+  "rfc": "...",
+  "ine": "...",
+  "address": "...",
   "municipio": "Pánuco",
   "state": "Veracruz",
-  "ejido": "Ejido solo si está explícitamente impreso, o 'Cabecera Municipal' si es zona urbana/centro",
-  "section": "SECCIÓN DE 4 DÍGITOS",
-  "validity": "RANGO DE VIGENCIA",
-  "cic": "CÓDIGO DE IDENTIFICACIÓN DE CREDENCIAL SI ESTÁ PRESENTE",
+  "ejido": "...",
+  "section": "...",
+  "validity": "...",
+  "cic": "...",
   "birthDate": "YYYY-MM-DD",
   "gender": "H o M",
-  "suggestedInitials": "INICIALES OFICIALES PARA EL FIERRO",
+  "suggestedInitials": "...",
   "confidenceScore": 95,
-  "notes": "Observaciones periciales de lectura"
+  "notes": "..."
 }
-Devuelve EXCLUSIVAMENTE el JSON válido, sin bloques markdown ni texto adicional.`;
+Devuelve EXCLUSIVAMENTE el JSON válido.`;
 
-        const candidateModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+      const candidateModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
 
-        for (const model of candidateModels) {
+      for (const model of candidateModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: [
+              { inlineData: { mimeType, data: cleanBase64 } },
+              promptText,
+            ],
+            config: { responseMimeType: 'application/json', temperature: 0.1 },
+          });
+
+          const rawText = response.text || '{}';
+          let parsedData: any = {};
           try {
-            const response = await ai.models.generateContent({
-              model,
-              contents: [
-                {
-                  inlineData: {
-                    mimeType,
-                    data: cleanBase64,
-                  },
-                },
-                promptText,
-              ],
-              config: {
-                responseMimeType: 'application/json',
-                temperature: 0.1,
-              },
+            parsedData = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+          } catch {
+            parsedData = {};
+          }
+
+          if (parsedData.isIne === false) {
+            return res.json({
+              success: false,
+              error: parsedData.error || 'No se detectó una credencial INE válida.',
             });
+          }
 
-            const rawText = response.text || '{}';
-            let parsedData: any = {};
-            try {
-              parsedData = JSON.parse(rawText.replace(/```json|```/g, '').trim());
-            } catch {
-              parsedData = {};
-            }
+          const hasValidData = Boolean(
+            (parsedData.fullName && parsedData.fullName.length > 3) ||
+            (parsedData.curp && parsedData.curp.length >= 10) ||
+            (parsedData.ine && parsedData.ine.length >= 10)
+          );
 
-            if (parsedData.isIne === false) {
-              return res.json({
-                success: false,
-                error:
-                  parsedData.error ||
-                  'No se detectó una credencial para votar INE/IFE válida en la imagen. Verifique la posición o capture de nuevo.',
-              });
-            }
-
-            const hasValidData = Boolean(
-              (parsedData.fullName && parsedData.fullName.length > 3) ||
-              (parsedData.curp && parsedData.curp.length >= 10) ||
-              (parsedData.ine && parsedData.ine.length >= 10)
-            );
-
-            if (!hasValidData) {
-              return res.json({
-                success: false,
-                error:
-                  'No se pudo leer el texto de la credencial electoral. Ajuste la posición (horizontal o vertical) o tome una fotografía más nítida.',
-              });
-            }
-
-            // Aplicar pipeline de validación y limpieza cruzada a los datos de Gemini
-            const sanitizedName = cleanIneName(parsedData.fullName || `${parsedData.names || ''} ${parsedData.firstLastName || ''} ${parsedData.secondLastName || ''}`);
+          if (hasValidData) {
+            // Aplicar pipeline de validación cruzada
+            const sanitizedName = cleanIneName(parsedData.fullName || '');
             const curpCheck = crossValidateCurp(
               parsedData.curp || '',
               sanitizedName.firstLastName,
               sanitizedName.secondLastName,
               sanitizedName.names
             );
-
             const rfcCheck = crossValidateRfc(
               parsedData.rfc || '',
               sanitizedName.firstLastName,
@@ -451,28 +672,26 @@ Devuelve EXCLUSIVAMENTE el JSON válido, sin bloques markdown ni texto adicional
               sanitizedName.names,
               parsedData.curp
             );
-
             const addressCheck = cleanIneAddress(parsedData.address || '', parsedData.ejido || '');
 
-            let validatedCurp = parsedData.curp || '';
             const crossValidationWarnings: string[] = [];
-            const validationErrors: string[] = [];
+            let validatedCurp = parsedData.curp || '';
+            let validatedRfc = parsedData.rfc || '';
 
             if (validatedCurp && !curpCheck.matchesName) {
-              crossValidationWarnings.push(
-                curpCheck.errorMessage ||
-                  `Incongruencia: La CURP (${validatedCurp}) no coincide con el apellido del titular "${sanitizedName.fullName}". Se rechaza asignación automática.`
-              );
-              validatedCurp = ''; // Rechazar CURP discordante
+              crossValidationWarnings.push(curpCheck.errorMessage || 'CURP no coincide con el nombre.');
+              validatedCurp = '';
             }
-
-            let validatedRfc = parsedData.rfc || '';
             if (validatedRfc && !rfcCheck.matchesName) {
-              crossValidationWarnings.push(
-                rfcCheck.errorMessage || 'El RFC no coincide con las iniciales del titular.'
-              );
+              crossValidationWarnings.push(rfcCheck.errorMessage || 'RFC no coincide con el nombre.');
               validatedRfc = '';
             }
+
+            const { suggestedInitials } = computeExpectedInitials(
+              sanitizedName.firstLastName,
+              sanitizedName.secondLastName,
+              sanitizedName.names
+            );
 
             const confidence = calculateRealConfidenceScore({
               isNameValid: sanitizedName.isValid,
@@ -489,153 +708,104 @@ Devuelve EXCLUSIVAMENTE el JSON válido, sin bloques markdown ni texto adicional
               hasIneKey: Boolean(parsedData.ine && parsedData.ine.length >= 10),
             });
 
-            const { suggestedInitials } = computeExpectedInitials(
-              sanitizedName.firstLastName,
-              sanitizedName.secondLastName,
-              sanitizedName.names
-            );
-
-            const normalizedData = {
-              fullName: sanitizedName.fullName,
-              names: sanitizedName.names,
-              firstLastName: sanitizedName.firstLastName,
-              secondLastName: sanitizedName.secondLastName,
-              curp: validatedCurp,
-              rfc: validatedRfc,
-              ine: parsedData.ine || '',
-              address: addressCheck.address,
-              municipio: addressCheck.municipio,
-              state: addressCheck.state,
-              ejido: addressCheck.ejido || 'Cabecera Municipal',
-              section: parsedData.section || '',
-              validity: parsedData.validity || '',
-              cic: parsedData.cic || '',
-              birthDate: parsedData.birthDate || '',
-              gender: parsedData.gender || '',
-              suggestedInitials,
-              confidenceScore: confidence.score,
-              confidenceLevel: confidence.level,
-              fieldStatus: {
-                name: sanitizedName.isValid ? 'valido' : 'error',
-                curp: validatedCurp && curpCheck.isValidFormat ? 'valido' : 'error',
-                rfc: validatedRfc ? 'valido' : 'alerta',
-                address: addressCheck.isDetailed ? 'valido' : 'alerta',
-                ine: parsedData.ine ? 'valido' : 'alerta',
-              },
-              validationErrors,
-              crossValidationWarnings,
-              notes:
-                confidence.level === 'baja'
-                  ? '⚠️ Confiabilidad baja. La corrección manual es obligatoria para CURP, RFC y Domicilio.'
-                  : 'Credencial validada con motor multimodal y verificación de congruencia.',
-            };
-
             return res.json({
               success: true,
-              source: `${model}-ocr`,
-              data: normalizedData,
+              source: model + '-ocr',
+              data: {
+                fullName: sanitizedName.fullName,
+                names: sanitizedName.names,
+                firstLastName: sanitizedName.firstLastName,
+                secondLastName: sanitizedName.secondLastName,
+                curp: validatedCurp,
+                rfc: validatedRfc,
+                ine: parsedData.ine || '',
+                address: addressCheck.address,
+                municipio: addressCheck.municipio,
+                state: addressCheck.state,
+                ejido: addressCheck.ejido || 'Cabecera Municipal',
+                section: parsedData.section || '',
+                validity: parsedData.validity || '',
+                cic: parsedData.cic || '',
+                birthDate: parsedData.birthDate || '',
+                gender: parsedData.gender || '',
+                suggestedInitials,
+                confidenceScore: confidence.score,
+                confidenceLevel: confidence.level,
+                fieldStatus: {
+                  name: sanitizedName.isValid ? 'valido' : 'error',
+                  curp: validatedCurp && curpCheck.isValidFormat ? 'valido' : 'error',
+                  rfc: validatedRfc ? 'valido' : 'alerta',
+                  address: addressCheck.isDetailed ? 'valido' : 'alerta',
+                  ine: parsedData.ine ? 'valido' : 'alerta',
+                },
+                validationErrors: [],
+                crossValidationWarnings,
+                notes: 'Credencial validada con motor Gemini + verificación cruzada.',
+              },
             });
-          } catch {
-            continue;
           }
+        } catch (geminiErr: any) {
+          console.warn('[OCR-Cascade] Motor 2 (' + model + ') falló:', geminiErr.message);
+          continue;
         }
       }
+    } else {
+      console.log('[OCR-Cascade] Motor 2: Gemini no disponible (sin API key)');
+    }
 
-      // Motor Óptico Local (Tesseract OCR y Extracción SVG) con Pipeline Antiruido y Validación Cruzada
-      try {
-        let extractedText = '';
+    // ─────────────────────────────────────────────────────────────
+    // MOTOR 3: Tesseract.js (fallback local)
+    // ─────────────────────────────────────────────────────────────
+    console.log('[OCR-Cascade] Motor 3: Intentando Tesseract.js');
 
-        // FIX_OCR_LINES_SCOPE: declarar ocrLines fuera del bloque para usarlo despues
-        let ocrLines: Array<{ text: string; confidence?: number; box?: any[] }> | undefined = undefined;
-
-        if (imageBase64.includes('<svg') || imageBase64.startsWith('data:image/svg+xml')) {
-          let rawSvg = imageBase64;
-          if (rawSvg.includes('base64,')) {
-            try {
-              rawSvg = Buffer.from(rawSvg.split('base64,')[1], 'base64').toString('utf-8');
-            } catch {}
-          } else if (rawSvg.includes('utf8,')) {
-            rawSvg = rawSvg.split('utf8,')[1];
-          }
-          try {
-            rawSvg = decodeURIComponent(rawSvg);
-          } catch {}
-
-          const textMatches = rawSvg.match(/<text[^>]*>([\s\S]*?)<\/text>/gi) || [];
-          const texts: string[] = [];
-          for (const m of textMatches) {
-            const clean = m
-              .replace(/<[^>]+>/g, ' ')
-              .replace(/&lt;/g, '<')
-              .replace(/&gt;/g, '>')
-              .replace(/&amp;/g, '&')
-              .trim();
-            if (clean) texts.push(clean);
-          }
-          extractedText = texts.join('\n');
-        } else {
-          const paddleResult = await callPaddleOCRService(imageBase64);
-          if (paddleResult && paddleResult.full_text) {
-            extractedText = paddleResult.full_text;
-            ocrLines = paddleResult.lines;  // FIX_OCR_LINES_SCOPE: guardar lineas
-            console.log('OK: PaddleOCR leyo la INE correctamente');
-            console.log('   Lineas detectadas: ' + (paddleResult.lines ? paddleResult.lines.length : 0));
-          } else {
-            let cleanBase64 = imageBase64;
-            if (cleanBase64.includes('base64,')) {
-              cleanBase64 = cleanBase64.split('base64,')[1];
-            }
-            const imageBuffer = Buffer.from(cleanBase64, 'base64');
-            if (!Tesseract) {
-              throw new Error('Tesseract no disponible en este entorno');
-            }
-            if (!Tesseract) {
-              throw new Error('Tesseract no disponible en este entorno');
-            }
-            const tesseractResult = await Tesseract.recognize(imageBuffer, 'spa+eng');
-            extractedText = tesseractResult?.data?.text || '';
-          }
-        }
-
-        // FIX_LINES_PARSER: pasar tambien las lineas individuales del OCR
-        const parsedResult = parseIneTextWithCrossValidation(
-          extractedText,
-          ocrLines
-        );
-
-        if (!parsedResult.fullName && !parsedResult.curp && !parsedResult.ine) {
-          return res.json({
-            success: false,
-            error:
-              'No se detectó una credencial para votar INE/IFE legible en la imagen. Ajuste la orientación (horizontal o vertical) o tome una fotografía más nítida con buena iluminación.',
-          });
-        }
-
-        return res.json({
-          success: true,
-          source: 'paddleocr-local-cpu',
-          rawText: extractedText,
-          data: parsedResult,
-        });
-      } catch (ocrErr: any) {
-        console.warn('Fallo en motor óptico OCR local:', ocrErr);
-        return res.json({
-          success: false,
-          error:
-            'No se pudo realizar la lectura de la credencial electoral. Verifique que la imagen esté nítida y orientada correctamente (horizontal o vertical).',
-        });
-      }
-    } catch (err: any) {
+    if (!Tesseract) {
       return res.json({
         success: false,
-        error:
-          'Error al procesar la imagen de la credencial INE. Por favor intente nuevamente o ajuste la orientación.',
+        error: 'No hay motores OCR disponibles. Configure PaddleOCR, Gemini o instale Tesseract.js.',
       });
     }
-  });
 
-  // =========================================================================
-  // HISTORICAL LIVESTOCK SHEET OCR API ROUTE (Multimodal Gemini + OCR Fallback)
+    try {
+      let cleanBase64 = imageBase64;
+      if (cleanBase64.includes('base64,')) {
+        cleanBase64 = cleanBase64.split('base64,')[1];
+      }
+      const imageBuffer = Buffer.from(cleanBase64, 'base64');
+      const tesseractResult = await Tesseract.recognize(imageBuffer, 'spa+eng');
+      const extractedText = tesseractResult?.data?.text || '';
+
+      const parsedResult = parseIneTextWithCrossValidation(extractedText);
+
+      if (!parsedResult.fullName && !parsedResult.curp && !parsedResult.ine) {
+        return res.json({
+          success: false,
+          error: 'No se detectó una credencial INE legible. Ajuste la orientación o capture con mejor iluminación.',
+        });
+      }
+
+      return res.json({
+        success: true,
+        source: 'tesseract-local-fallback',
+        rawText: extractedText,
+        data: parsedResult,
+      });
+    } catch (tessErr: any) {
+      console.warn('[OCR-Cascade] Motor 3 (Tesseract) falló:', tessErr.message);
+      return res.json({
+        success: false,
+        error: 'Todos los motores OCR fallaron. Verifique la imagen e intente nuevamente.',
+      });
+    }
+
+  } catch (err: any) {
+    console.error('[OCR-Cascade] Error general:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Error interno al procesar la imagen de la credencial INE.',
+    });
+  }
+});
+// HISTORICAL LIVESTOCK SHEET OCR API ROUTE (Multimodal Gemini + OCR Fallback)
   // =========================================================================
   app.post('/api/ai/scan-historical', async (req, res) => {
     try {
