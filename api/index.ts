@@ -1,25 +1,8 @@
-import express from 'express';
+import { createApp } from './app';
 
-const app = express();
-app.use(express.json({ limit: '10mb' }));
-
-// Health check mínimo (sin dependencias pesadas)
-app.get('/api/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
-app.get('/api/ai/scan-ine', (req, res) => {
-  res.status(200).json({ 
-    success: true, 
-    message: 'Función mínima funcionando - el problema está en api/app.ts' 
-  });
-});
-
-app.post('/api/ai/scan-ine', (req, res) => {
-  res.status(200).json({ 
-    success: true, 
-    message: 'Función mínima funcionando - el problema está en api/app.ts' 
-  });
-});
+// Vercel Serverless Function única bajo /api (ver vercel.json rewrite "/api/(.*)" -> "/api/index").
+// La sintaxis catch-all [...path].ts solo funciona en Next.js; en Vite se usa este archivo + rewrite.
+// Reutiliza la misma app Express de server/app.ts (rutas /api/ai/* y /api/biometrics/*).
+const app = createApp();
 
 export default app;
