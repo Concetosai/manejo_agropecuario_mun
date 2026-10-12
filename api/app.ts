@@ -581,7 +581,7 @@ Responde ÚNICAMENTE en JSON con esta estructura:
       });
 
       if (paddleResponse.ok) {
-        const paddleData = await paddleResponse.json();
+        const paddleData = await paddleResponse.json() as { success?: boolean; full_text?: string; lines?: any[] };
         if (paddleData.success && paddleData.full_text) {
           console.log('[OCR-Cascade] OK: PaddleOCR respondió correctamente');
 
