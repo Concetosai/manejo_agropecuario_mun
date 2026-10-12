@@ -717,7 +717,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
                 placeholder="Buscar por folio, contribuyente, domicilio o concepto..."
                 className="w-full pl-9 pr-4 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
@@ -742,7 +742,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             <div className="sm:col-span-3">
               <select
                 value={conceptFilter}
-                onChange={(e) => setConceptFilter(e.target.value)}
+                onChange={(e) => setConceptFilter(e.target.value.toUpperCase())}
                 className="w-full py-2 px-3 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
               >
                 <option value="ALL">Todos los Conceptos</option>
@@ -1118,7 +1118,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                   type="text"
                   required
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => setAddress(e.target.value.toUpperCase())}
                   placeholder="Ej. Rancho La Huasteca Alta - Ejido Reventadero, Pánuco, Ver."
                   className={`w-full pl-9 pr-3 py-2 border rounded-xl text-xs sm:text-sm focus:outline-none transition-colors ${
                     isAddressMissing && (touchedSubmit || Boolean(preloadedOrderData))
@@ -1137,7 +1137,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                 type="text"
                 required
                 value={exercise}
-                onChange={(e) => setExercise(e.target.value)}
+                onChange={(e) => setExercise(e.target.value.toUpperCase())}
                 placeholder="2026-2029"
                 className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
@@ -1165,7 +1165,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                 type="date"
                 required
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => setDate(e.target.value.toUpperCase())}
                 className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -1231,7 +1231,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                         <input
                           type="text"
                           value={customConcept}
-                          onChange={(e) => setCustomConcept(e.target.value)}
+                          onChange={(e) => setCustomConcept(e.target.value.toUpperCase())}
                           placeholder="Descripción del concepto personalizado..."
                           className="w-full px-2 py-1 bg-white border border-stone-300 rounded text-xs"
                         />
@@ -1296,7 +1296,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             <input
               type="text"
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => setNotes(e.target.value.toUpperCase())}
               placeholder="Ej. Pago con transferencia bancaria / Trámite de nuevo registro ganadero."
               className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
@@ -1484,7 +1484,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                 <input
                   type="text"
                   value={operadorEntregoDocs}
-                  onChange={(e) => setOperadorEntregoDocs(e.target.value)}
+                  onChange={(e) => setOperadorEntregoDocs(e.target.value.toUpperCase())}
                   placeholder="Nombre completo del operador"
                   className="w-full px-3 py-2.5 bg-stone-50 border-2 border-stone-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   disabled={isProcessingModal}

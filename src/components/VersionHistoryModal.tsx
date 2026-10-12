@@ -143,7 +143,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                 <input
                   type="text"
                   value={checkpointLabel}
-                  onChange={(e) => setCheckpointLabel(e.target.value)}
+                  onChange={(e) => setCheckpointLabel(e.target.value.toUpperCase())}
                   placeholder="Etiqueta (ej. Antes de cambiar RFC)..."
                   className="px-2.5 py-1 text-xs border border-amber-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600 bg-white w-52"
                   autoFocus

@@ -213,7 +213,7 @@ export const TabAuditoria: React.FC<TabAuditoriaProps> = ({ currentUser }) => {
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value.toUpperCase())}
             placeholder="Buscar por detalle de acción, servidor público, folio (ej. PAN-2026), titular o IP..."
             className="w-full pl-9 pr-4 py-1.5 text-xs sm:text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
           />

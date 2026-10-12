@@ -329,7 +329,7 @@ export const RevalidacionView: React.FC<RevalidacionViewProps> = ({
                     <input
                       type="text"
                       value={folioQuery}
-                      onChange={(e) => setFolioQuery(e.target.value)}
+                      onChange={(e) => setFolioQuery(e.target.value.toUpperCase())}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleBuscarFolio(); }}
                       placeholder="Ej. PAN-2026-04293"
                       className="w-full pl-9 pr-3 py-2.5 text-xs bg-stone-50 border border-stone-300 rounded-xl font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"

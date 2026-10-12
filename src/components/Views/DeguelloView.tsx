@@ -347,7 +347,7 @@ export const DeguelloView: React.FC<DeguelloViewProps> = ({
                     <input
                       type="text"
                       value={folioQuery}
-                      onChange={(e) => setFolioQuery(e.target.value)}
+                      onChange={(e) => setFolioQuery(e.target.value.toUpperCase())}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleBuscarFolio(); }}
                       placeholder="Ej. PAN-2026-04293"
                       className="w-full pl-9 pr-3 py-2.5 text-xs bg-stone-50 border border-stone-300 rounded-xl font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -501,7 +501,7 @@ export const DeguelloView: React.FC<DeguelloViewProps> = ({
                       </label>
                       <select
                         value={facility}
-                        onChange={(e) => setFacility(e.target.value)}
+                        onChange={(e) => setFacility(e.target.value.toUpperCase())}
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       >
                         <option value="RASTRO MUNICIPAL DE PÁNUCO">RASTRO MUNICIPAL DE PÁNUCO</option>
@@ -518,7 +518,7 @@ export const DeguelloView: React.FC<DeguelloViewProps> = ({
                       <input
                         type="date"
                         value={slaughterDate}
-                        onChange={(e) => setSlaughterDate(e.target.value)}
+                        onChange={(e) => setSlaughterDate(e.target.value.toUpperCase())}
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -532,7 +532,7 @@ export const DeguelloView: React.FC<DeguelloViewProps> = ({
                       <input
                         type="text"
                         value={introductorName}
-                        onChange={(e) => setIntroductorName(e.target.value)}
+                        onChange={(e) => setIntroductorName(e.target.value.toUpperCase())}
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-bold uppercase focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
@@ -544,7 +544,7 @@ export const DeguelloView: React.FC<DeguelloViewProps> = ({
                       <input
                         type="text"
                         value={originBrand}
-                        onChange={(e) => setOriginBrand(e.target.value)}
+                        onChange={(e) => setOriginBrand(e.target.value.toUpperCase())}
                         placeholder="Monograma o rancho..."
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
@@ -568,7 +568,7 @@ export const DeguelloView: React.FC<DeguelloViewProps> = ({
                       <input
                         type="text"
                         value={transitGuideNumber}
-                        onChange={(e) => setTransitGuideNumber(e.target.value)}
+                        onChange={(e) => setTransitGuideNumber(e.target.value.toUpperCase())}
                         placeholder="Ej. GTZ-VER-2026-123456"
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-mono font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
@@ -581,7 +581,7 @@ export const DeguelloView: React.FC<DeguelloViewProps> = ({
                       <input
                         type="text"
                         value={sanitaryCertificate}
-                        onChange={(e) => setSanitaryCertificate(e.target.value)}
+                        onChange={(e) => setSanitaryCertificate(e.target.value.toUpperCase())}
                         placeholder="Ej. CFS-PAN-109/2026"
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-mono font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
@@ -595,7 +595,7 @@ export const DeguelloView: React.FC<DeguelloViewProps> = ({
                     <input
                       type="text"
                       value={inspectorName}
-                      onChange={(e) => setInspectorName(e.target.value)}
+                      onChange={(e) => setInspectorName(e.target.value.toUpperCase())}
                       className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>

@@ -256,7 +256,7 @@ export const SettingsFinanzasCatalogo: React.FC<SettingsFinanzasCatalogoProps> =
                 <input
                   type="text"
                   value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
+                  onChange={(e) => setBusqueda(e.target.value.toUpperCase())}
                   placeholder="Buscar por código, nombre o concepto..."
                   className="w-full pl-9 pr-3 py-2 bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 font-medium"
                 />

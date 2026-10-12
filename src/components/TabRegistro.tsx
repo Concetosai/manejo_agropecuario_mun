@@ -1409,7 +1409,7 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
                     <input
                       type="text"
                       value={newMunicipioName}
-                      onChange={(e) => setNewMunicipioName(e.target.value)}
+                      onChange={(e) => setNewMunicipioName(e.target.value.toUpperCase())}
                       placeholder="Nombre del municipio o extensión (Ej. Tampico Alto, Platón Sánchez, Ébano...)"
                       className="flex-1 px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-lg bg-white focus:ring-2 focus:ring-amber-500"
                     />
@@ -1500,7 +1500,7 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
                     <input
                       type="text"
                       value={newEjidoName}
-                      onChange={(e) => setNewEjidoName(e.target.value)}
+                      onChange={(e) => setNewEjidoName(e.target.value.toUpperCase())}
                       placeholder={`Nombre del ${newEjidoType.toLowerCase()} o extensión (Ej. ${newEjidoType} Chimal, Sector Tamante, Las Ánimas...)`}
                       className="flex-1 px-3 py-2 text-xs sm:text-sm border border-stone-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500"
                     />

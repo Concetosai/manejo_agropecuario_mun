@@ -263,7 +263,7 @@ export const ModalEditarConcepto: React.FC<ModalEditarConceptoProps> = ({
                 type="text"
                 required
                 value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
+                onChange={(e) => setNombre(e.target.value.toUpperCase())}
                 placeholder="Ej. Alta de Fierro Quemador"
                 className="w-full px-3 py-2 border border-stone-300 rounded-xl font-bold focus:ring-2 focus:ring-amber-500 bg-stone-50 focus:bg-white"
               />
@@ -278,7 +278,7 @@ export const ModalEditarConcepto: React.FC<ModalEditarConceptoProps> = ({
             <textarea
               rows={2}
               value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
+              onChange={(e) => setDescripcion(e.target.value.toUpperCase())}
               placeholder="Detalle del servicio que figurará en el comprobante municipal..."
               className="w-full px-3 py-2 border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 bg-stone-50 focus:bg-white"
             />
@@ -490,7 +490,7 @@ export const ModalEditarConcepto: React.FC<ModalEditarConceptoProps> = ({
               <input
                 type="text"
                 value={motivoCambio}
-                onChange={(e) => setMotivoCambio(e.target.value)}
+                onChange={(e) => setMotivoCambio(e.target.value.toUpperCase())}
                 placeholder="Ej. Actualización por decreto de Cabildo 2026..."
                 className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-xs"
               />

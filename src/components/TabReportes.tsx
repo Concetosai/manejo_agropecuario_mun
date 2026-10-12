@@ -1331,7 +1331,7 @@ export const TabReportes: React.FC<TabReportesProps> = ({ municipalConfig, curre
                   type="text"
                   required
                   value={newActivityForm.title}
-                  onChange={(e) => setNewActivityForm({ ...newActivityForm, title: e.target.value })}
+                  onChange={(e) => setNewActivityForm({ ...newActivityForm, title: e.target.value.toUpperCase() })}
                   placeholder="Ej. Distribución de Pacas de Heno por Estiaje"
                   className="w-full px-3 py-2 border border-stone-300 rounded-lg"
                 />
@@ -1357,7 +1357,7 @@ export const TabReportes: React.FC<TabReportesProps> = ({ municipalConfig, curre
                   </label>
                   <select
                     value={newActivityForm.ejido}
-                    onChange={(e) => setNewActivityForm({ ...newActivityForm, ejido: e.target.value })}
+                    onChange={(e) => setNewActivityForm({ ...newActivityForm, ejido: e.target.value.toUpperCase() })}
                     className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-stone-50 font-medium cursor-pointer"
                   >
                     {PANUCO_EJIDOS.map((ej) => (

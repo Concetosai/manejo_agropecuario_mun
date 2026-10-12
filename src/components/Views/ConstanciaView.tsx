@@ -386,7 +386,7 @@ export const ConstanciaView: React.FC<ConstanciaViewProps> = ({
                     <input
                       type="text"
                       value={folioQuery}
-                      onChange={(e) => setFolioQuery(e.target.value)}
+                      onChange={(e) => setFolioQuery(e.target.value.toUpperCase())}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleBuscarFolio(); }}
                       placeholder="Ej. PAN-2026-04293 o HERR730609HVZRMD01"
                       className="w-full pl-9 pr-3 py-2.5 text-xs bg-stone-50 border border-stone-300 rounded-xl font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -460,7 +460,7 @@ export const ConstanciaView: React.FC<ConstanciaViewProps> = ({
                     <input
                       type="text"
                       value={producerName}
-                      onChange={(e) => setProducerName(e.target.value)}
+                      onChange={(e) => setProducerName(e.target.value.toUpperCase())}
                       className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-bold uppercase focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -473,7 +473,7 @@ export const ConstanciaView: React.FC<ConstanciaViewProps> = ({
                       <input
                         type="text"
                         value={propertyName}
-                        onChange={(e) => setPropertyName(e.target.value)}
+                        onChange={(e) => setPropertyName(e.target.value.toUpperCase())}
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
@@ -484,7 +484,7 @@ export const ConstanciaView: React.FC<ConstanciaViewProps> = ({
                       </label>
                       <select
                         value={ejido}
-                        onChange={(e) => setEjido(e.target.value)}
+                        onChange={(e) => setEjido(e.target.value.toUpperCase())}
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                       >
                         {PANUCO_EJIDOS.map((ej) => (
@@ -502,7 +502,7 @@ export const ConstanciaView: React.FC<ConstanciaViewProps> = ({
                       <input
                         type="text"
                         value={uppKey}
-                        onChange={(e) => setUppKey(e.target.value)}
+                        onChange={(e) => setUppKey(e.target.value.toUpperCase())}
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-mono font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
@@ -514,7 +514,7 @@ export const ConstanciaView: React.FC<ConstanciaViewProps> = ({
                       <input
                         type="text"
                         value={initials}
-                        onChange={(e) => setInitials(e.target.value)}
+                        onChange={(e) => setInitials(e.target.value.toUpperCase())}
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-cinzel font-black uppercase text-amber-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
@@ -527,7 +527,7 @@ export const ConstanciaView: React.FC<ConstanciaViewProps> = ({
                     <input
                       type="text"
                       value={purpose}
-                      onChange={(e) => setPurpose(e.target.value)}
+                      onChange={(e) => setPurpose(e.target.value.toUpperCase())}
                       className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>

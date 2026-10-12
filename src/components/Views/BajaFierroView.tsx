@@ -322,7 +322,7 @@ export const BajaFierroView: React.FC<BajaFierroViewProps> = ({
                     <input
                       type="text"
                       value={folioQuery}
-                      onChange={(e) => setFolioQuery(e.target.value)}
+                      onChange={(e) => setFolioQuery(e.target.value.toUpperCase())}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleBuscarFolio(); }}
                       placeholder="Ej. PAN-2026-04293"
                       className="w-full pl-9 pr-3 py-2.5 text-xs bg-stone-50 border border-stone-300 rounded-xl font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
@@ -460,7 +460,7 @@ export const BajaFierroView: React.FC<BajaFierroViewProps> = ({
                       </label>
                       <select
                         value={bajaReason}
-                        onChange={(e) => setBajaReason(e.target.value)}
+                        onChange={(e) => setBajaReason(e.target.value.toUpperCase())}
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                       >
                         {MOTIVOS_BAJA.map((m) => (
@@ -476,7 +476,7 @@ export const BajaFierroView: React.FC<BajaFierroViewProps> = ({
                       <input
                         type="text"
                         value={supportingDocument}
-                        onChange={(e) => setSupportingDocument(e.target.value)}
+                        onChange={(e) => setSupportingDocument(e.target.value.toUpperCase())}
                         placeholder="Ej. Acta Defunción 402/2026, Escritura..."
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                       />
@@ -491,7 +491,7 @@ export const BajaFierroView: React.FC<BajaFierroViewProps> = ({
                       <input
                         type="text"
                         value={applicantName}
-                        onChange={(e) => setApplicantName(e.target.value)}
+                        onChange={(e) => setApplicantName(e.target.value.toUpperCase())}
                         placeholder="Nombre completo..."
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                       />
@@ -503,7 +503,7 @@ export const BajaFierroView: React.FC<BajaFierroViewProps> = ({
                       </label>
                       <select
                         value={applicantRole}
-                        onChange={(e) => setApplicantRole(e.target.value)}
+                        onChange={(e) => setApplicantRole(e.target.value.toUpperCase())}
                         className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                       >
                         <option value="TITULAR DEL REGISTRO">TITULAR DEL REGISTRO</option>
@@ -520,7 +520,7 @@ export const BajaFierroView: React.FC<BajaFierroViewProps> = ({
                     </label>
                     <textarea
                       value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
+                      onChange={(e) => setNotes(e.target.value.toUpperCase())}
                       rows={2}
                       className="w-full text-xs p-2.5 bg-stone-50 border border-stone-300 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500"
                     />

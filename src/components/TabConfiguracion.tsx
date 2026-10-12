@@ -332,7 +332,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
               <input
                 type="text"
                 value={municipalConfig.municipalityName}
-                onChange={(e) => handleFieldChange('municipalityName', e.target.value)}
+                onChange={(e) => handleFieldChange('municipalityName', e.target.value.toUpperCase())}
                 className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
               />
             </div>
@@ -344,7 +344,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
               <input
                 type="text"
                 value={municipalConfig.stateName}
-                onChange={(e) => handleFieldChange('stateName', e.target.value)}
+                onChange={(e) => handleFieldChange('stateName', e.target.value.toUpperCase())}
                 className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
               />
             </div>
@@ -356,7 +356,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
               <input
                 type="text"
                 value={municipalConfig.departmentName}
-                onChange={(e) => handleFieldChange('departmentName', e.target.value)}
+                onChange={(e) => handleFieldChange('departmentName', e.target.value.toUpperCase())}
                 className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
               />
             </div>
@@ -368,7 +368,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
               <input
                 type="text"
                 value={municipalConfig.administrationPeriod}
-                onChange={(e) => handleFieldChange('administrationPeriod', e.target.value)}
+                onChange={(e) => handleFieldChange('administrationPeriod', e.target.value.toUpperCase())}
                 className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
               />
             </div>
@@ -387,7 +387,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
                     type="text"
                     value={municipalConfig.municipalityAddress || ''}
                     placeholder="Palacio Municipal s/n, Zona Centro, C.P. 93990, Pánuco, Ver."
-                    onChange={(e) => handleFieldChange('municipalityAddress', e.target.value)}
+                    onChange={(e) => handleFieldChange('municipalityAddress', e.target.value.toUpperCase())}
                     className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
                   />
                   <span className="text-[11px] text-stone-500 mt-0.5 block">
@@ -403,7 +403,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
                     type="text"
                     value={municipalConfig.municipalityMotto || ''}
                     placeholder="Transformando el Campo con Honestidad, Trabajo y Cercanía a la Gente"
-                    onChange={(e) => handleFieldChange('municipalityMotto', e.target.value)}
+                    onChange={(e) => handleFieldChange('municipalityMotto', e.target.value.toUpperCase())}
                     className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
                   />
                   <span className="text-[11px] text-stone-500 mt-0.5 block">
@@ -419,7 +419,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
                     type="text"
                     value={municipalConfig.municipalityPhone || ''}
                     placeholder="Tel. (846) 266-0011 / 266-0012"
-                    onChange={(e) => handleFieldChange('municipalityPhone', e.target.value)}
+                    onChange={(e) => handleFieldChange('municipalityPhone', e.target.value.toUpperCase())}
                     className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
                   />
                 </div>
@@ -432,7 +432,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
                     type="text"
                     value={municipalConfig.municipalityEmail || ''}
                     placeholder="contacto@panuco.gob.mx · fomentoagropecuario@panuco.gob.mx"
-                    onChange={(e) => handleFieldChange('municipalityEmail', e.target.value)}
+                    onChange={(e) => handleFieldChange('municipalityEmail', e.target.value.toUpperCase())}
                     className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
                   />
                 </div>
@@ -465,7 +465,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
                       type="url"
                       value={municipalConfig.customLogoUrl || ''}
                       placeholder="https://ejemplo.gob.mx/logo-panuco.png o deje vacío para el escudo oficial"
-                      onChange={(e) => handleFieldChange('customLogoUrl', e.target.value)}
+                      onChange={(e) => handleFieldChange('customLogoUrl', e.target.value.toUpperCase())}
                       className="w-full px-3 py-1.5 text-xs border border-stone-300 rounded focus:ring-2 focus:ring-amber-500 bg-white"
                     />
                   </div>
@@ -533,7 +533,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
               <input
                 type="text"
                 value={municipalConfig.treasurerName}
-                onChange={(e) => handleFieldChange('treasurerName', e.target.value)}
+                onChange={(e) => handleFieldChange('treasurerName', e.target.value.toUpperCase())}
                 className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
               />
             </div>
@@ -545,7 +545,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
               <input
                 type="text"
                 value={municipalConfig.treasurerTitle}
-                onChange={(e) => handleFieldChange('treasurerTitle', e.target.value)}
+                onChange={(e) => handleFieldChange('treasurerTitle', e.target.value.toUpperCase())}
                 className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
               />
             </div>
@@ -557,7 +557,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
               <input
                 type="text"
                 value={municipalConfig.directorName}
-                onChange={(e) => handleFieldChange('directorName', e.target.value)}
+                onChange={(e) => handleFieldChange('directorName', e.target.value.toUpperCase())}
                 className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
               />
             </div>
@@ -569,7 +569,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
               <input
                 type="text"
                 value={municipalConfig.directorTitle}
-                onChange={(e) => handleFieldChange('directorTitle', e.target.value)}
+                onChange={(e) => handleFieldChange('directorTitle', e.target.value.toUpperCase())}
                 className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50"
               />
             </div>
@@ -599,7 +599,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
             <textarea
               rows={4}
               value={municipalConfig.legalBasisText}
-              onChange={(e) => handleFieldChange('legalBasisText', e.target.value)}
+              onChange={(e) => handleFieldChange('legalBasisText', e.target.value.toUpperCase())}
               className="w-full px-3.5 py-2 text-xs sm:text-sm border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-stone-50/50 leading-relaxed font-sans"
             />
           </div>
@@ -636,7 +636,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
                   <input
                     type="text"
                     value={newMunInput}
-                    onChange={(e) => setNewMunInput(e.target.value)}
+                    onChange={(e) => setNewMunInput(e.target.value.toUpperCase())}
                     placeholder="Nuevo municipio..."
                     className="px-2.5 py-1 text-xs border border-stone-300 rounded-md bg-white focus:ring-1 focus:ring-amber-500"
                   />
@@ -684,7 +684,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
                   <input
                     type="text"
                     value={newEjidoInput}
-                    onChange={(e) => setNewEjidoInput(e.target.value)}
+                    onChange={(e) => setNewEjidoInput(e.target.value.toUpperCase())}
                     placeholder="Nueva localidad..."
                     className="px-2.5 py-1 text-xs border border-stone-300 rounded-md bg-white focus:ring-1 focus:ring-emerald-500"
                   />

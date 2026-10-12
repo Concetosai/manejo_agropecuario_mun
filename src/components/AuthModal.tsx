@@ -313,7 +313,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   type="text"
                   required
                   value={regFullName}
-                  onChange={(e) => setRegFullName(e.target.value)}
+                  onChange={(e) => setRegFullName(e.target.value.toUpperCase())}
                   placeholder="Ej. Lic. Rodolfo Zúñiga Del Ángel"
                   className="w-full px-3.5 py-2 text-sm border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-stone-50"
                 />
@@ -373,7 +373,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <input
                   type="text"
                   value={regDepartment}
-                  onChange={(e) => setRegDepartment(e.target.value)}
+                  onChange={(e) => setRegDepartment(e.target.value.toUpperCase())}
                   className="w-full px-3.5 py-2 text-xs border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-stone-50"
                 />
               </div>

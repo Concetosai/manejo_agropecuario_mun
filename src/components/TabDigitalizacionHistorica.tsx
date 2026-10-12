@@ -1476,7 +1476,7 @@ export const TabDigitalizacionHistorica: React.FC<TabDigitalizacionHistoricaProp
                         {f.key === 'tenencia' ? (
                           <select
                             value={formData.tenencia}
-                            onChange={(e) => setFormData({ ...formData, tenencia: e.target.value })}
+                            onChange={(e) => setFormData({ ...formData, tenencia: e.target.value.toUpperCase() })}
                             className="w-full p-2 border border-stone-300 rounded-lg text-xs sm:text-sm font-semibold text-stone-800 bg-white focus:border-amber-700 focus:outline-none"
                           >
                             <option value="PROPIEDAD">PROPIEDAD</option>
@@ -1487,7 +1487,7 @@ export const TabDigitalizacionHistorica: React.FC<TabDigitalizacionHistoricaProp
                         ) : f.key === 'asociado' ? (
                           <select
                             value={formData.asociado}
-                            onChange={(e) => setFormData({ ...formData, asociado: e.target.value })}
+                            onChange={(e) => setFormData({ ...formData, asociado: e.target.value.toUpperCase() })}
                             className="w-full p-2 border border-stone-300 rounded-lg text-xs sm:text-sm font-semibold text-stone-800 bg-white focus:border-amber-700 focus:outline-none"
                           >
                             <option value="SÍ">SÍ (ASOCIADO AGL)</option>
@@ -1496,7 +1496,7 @@ export const TabDigitalizacionHistorica: React.FC<TabDigitalizacionHistoricaProp
                         ) : f.key === 'especie' ? (
                           <select
                             value={formData.especie}
-                            onChange={(e) => setFormData({ ...formData, especie: e.target.value })}
+                            onChange={(e) => setFormData({ ...formData, especie: e.target.value.toUpperCase() })}
                             className="w-full p-2 border border-stone-300 rounded-lg text-xs sm:text-sm font-semibold text-stone-800 bg-white focus:border-amber-700 focus:outline-none"
                           >
                             <option value="BOVINO">BOVINO</option>

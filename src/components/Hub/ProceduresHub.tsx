@@ -6,24 +6,14 @@ import {
   FileText,
   Beef,
   DollarSign,
-  Settings,
-  Users,
-  BarChart3,
   Search,
   ArrowRight,
   ShieldCheck,
   Building2,
   Sparkles,
-  Receipt,
   FolderArchive,
   Printer,
-  ChevronRight,
   CheckCircle2,
-  Calendar,
-  AlertTriangle,
-  BadgeAlert,
-  Info,
-  X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MunicipalConfig, MunicipalUser, ProducerData, PreloadedOrderData } from '../../types';
@@ -31,7 +21,6 @@ import { MunicipalConfig, MunicipalUser, ProducerData, PreloadedOrderData } from
 export type ProcedureCategoryId = 'ALTA' | 'REVALIDACION' | 'BAJA' | 'CONSTANCIA' | 'DEGUELLO';
 
 interface ProceduresHubProps {
-  onSelectCategory: (category: ProcedureCategoryId, preloadedData?: PreloadedOrderData) => void;
   onNavigateTo: (view: string) => void;
   activeTab?: string;
   municipalConfig?: MunicipalConfig;
@@ -41,7 +30,6 @@ interface ProceduresHubProps {
 }
 
 export const ProceduresHub: React.FC<ProceduresHubProps> = ({
-  onSelectCategory,
   onNavigateTo,
   activeTab = 'hub',
   municipalConfig,
@@ -49,93 +37,7 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
   currentProducer,
   totalRegisteredRecords = 4250,
 }) => {
-  const [selectedModalCategory, setSelectedModalCategory] = useState<ProcedureCategoryId | null>(null);
 
-  // Helper to build preloaded order payload from hub context
-  const buildPreloadedForCategory = (catId: ProcedureCategoryId): PreloadedOrderData => {
-    const taxpayer = currentProducer?.fullName ? currentProducer.fullName.toUpperCase() : '';
-    const addr = currentProducer?.address
-      ? `${currentProducer.propertyName ? `${currentProducer.propertyName} - ` : ''}${currentProducer.address}, Ejido ${currentProducer.ejido || 'Reventadero'}, Pánuco, Ver.`
-      : 'Rancho La Huasteca Alta - Ejido Reventadero, Pánuco, Ver.';
-    const rfc = currentProducer?.rfc || 'GUAA62041530H';
-    const curp = currentProducer?.curp || '';
-    const now = new Date().toISOString().split('T')[0];
-
-    switch (catId) {
-      case 'ALTA':
-        return {
-          nombreContribuyente: taxpayer,
-          domicilioContribuyente: addr,
-          rfc,
-          curp,
-          conceptosSeleccionados: ['1. ALTA DE FIERRO QUEMADOR', '5. PAGO DE CONSTANCIA'],
-          montoTotal: 630,
-          ejercicioFiscal: currentProducer?.validityRange || '2026-2029',
-          periodo: 'OCTUBRE 2026',
-          fechaExpedicion: now,
-          tramiteOrigen: 'ALTA',
-          notas: `Alta inicial de registro de fierro marcador para C. ${taxpayer}.`,
-        };
-      case 'REVALIDACION':
-        return {
-          nombreContribuyente: taxpayer,
-          domicilioContribuyente: addr,
-          rfc,
-          curp,
-          conceptosSeleccionados: ['2. REVALIDACION FIERRO QUEMADOR', '5. PAGO DE CONSTANCIA'],
-          montoTotal: 530,
-          ejercicioFiscal: '2026-2029',
-          periodo: 'OCTUBRE 2026',
-          fechaExpedicion: now,
-          tramiteOrigen: 'REVALIDACION',
-          notas: `Revalidación y refrendo pecuario 2026 para C. ${taxpayer}.`,
-        };
-      case 'BAJA':
-        return {
-          nombreContribuyente: taxpayer,
-          domicilioContribuyente: addr,
-          rfc,
-          curp,
-          conceptosSeleccionados: ['6. BAJA DE FIERRO QUEMADOR'],
-          montoTotal: 200,
-          ejercicioFiscal: '2026-2029',
-          periodo: 'OCTUBRE 2026',
-          fechaExpedicion: now,
-          tramiteOrigen: 'BAJA',
-          notas: `Baja registral definitiva de fierro quemador para C. ${taxpayer}.`,
-        };
-      case 'CONSTANCIA':
-        return {
-          nombreContribuyente: taxpayer,
-          domicilioContribuyente: addr,
-          rfc,
-          curp,
-          conceptosSeleccionados: ['5. PAGO DE CONSTANCIA'],
-          montoTotal: 180,
-          ejercicioFiscal: '2026-2029',
-          periodo: 'OCTUBRE 2026',
-          fechaExpedicion: now,
-          tramiteOrigen: 'CONSTANCIA',
-          notas: `Expedición de Constancia Oficial de Propiedad Ganadera para C. ${taxpayer}.`,
-        };
-      case 'DEGUELLO':
-        return {
-          nombreContribuyente: taxpayer,
-          domicilioContribuyente: currentProducer?.address ? addr : 'Rastro Municipal de Pánuco, Ver.',
-          rfc,
-          curp,
-          conceptosSeleccionados: ['7. DERECHO DE DEGÜELLO Y CONTROL SANITARIO'],
-          montoTotal: 270,
-          ejercicioFiscal: '2026-2029',
-          periodo: 'OCTUBRE 2026',
-          fechaExpedicion: now,
-          tramiteOrigen: 'DEGUELLO',
-          headCount: 3,
-          species: 'Bovino (Res / Vaca / Novillo)',
-          notas: `Derecho de degüello e inspección sanitaria para 3 cabezas de ganado bovino para C. ${taxpayer}.`,
-        };
-    }
-  };
 
   // 5 Categorías principales de trámites oficiales de Pánuco
   const categories = [
@@ -153,11 +55,7 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
       badge: 'Nuevo Registro',
       tariff: '$450.00 MXN',
       concepts: ['Alta de Fierro Quemador', 'Pago de Constancia'],
-      subActions: [
-        { label: 'Ir al Formulario de Alta de Fierro (Hojas 1-4)', action: () => onNavigateTo('alta'), primary: true },
-        { label: 'Generar Orden de Cobro en Finanzas ($630.00)', action: () => onSelectCategory('ALTA', buildPreloadedForCategory('ALTA')) },
-        { label: 'Diseñar Marca y Validar Antiduplicidad', action: () => onNavigateTo('creador') },
-      ],
+      // subActions eliminado (modal deprecado)
     },
     {
       id: 'REVALIDACION' as const,
@@ -173,11 +71,7 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
       badge: 'Ejercicio 2026',
       tariff: '$350.00 MXN',
       concepts: ['Revalidación Fierro Quemador', 'Multa por Pago Extemporáneo'],
-      subActions: [
-        { label: 'Ventanilla de Revalidación y Anualidad 2026', action: () => onNavigateTo('revalidacion'), primary: true },
-        { label: 'Generar Orden de Cobro en Finanzas ($530.00)', action: () => onSelectCategory('REVALIDACION', buildPreloadedForCategory('REVALIDACION')) },
-        { label: 'Buscar Registro en Padrón Histórico', action: () => onNavigateTo('buscador') },
-      ],
+      // subActions eliminado (modal deprecado)
     },
     {
       id: 'BAJA' as const,
@@ -193,11 +87,7 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
       badge: 'Cancelación',
       tariff: '$200.00 MXN',
       concepts: ['Baja de Fierro Quemador'],
-      subActions: [
-        { label: 'Ventanilla de Baja y Cancelación de Registro', action: () => onNavigateTo('baja'), primary: true },
-        { label: 'Generar Orden de Cobro en Finanzas ($200.00)', action: () => onSelectCategory('BAJA', buildPreloadedForCategory('BAJA')) },
-        { label: 'Consultar Padrón de Fierros', action: () => onNavigateTo('buscador') },
-      ],
+      // subActions eliminado (modal deprecado)
     },
     {
       id: 'CONSTANCIA' as const,
@@ -213,11 +103,7 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
       badge: 'Documentación Oficial',
       tariff: '$180.00 MXN',
       concepts: ['Pago de Constancia', 'Reposición por Patente Extraviada'],
-      subActions: [
-        { label: 'Ventanilla de Expedición de Constancias', action: () => onNavigateTo('constancia'), primary: true },
-        { label: 'Generar Orden de Cobro en Finanzas ($180.00)', action: () => onSelectCategory('CONSTANCIA', buildPreloadedForCategory('CONSTANCIA')) },
-        { label: 'Ver Certificado / Credencial Oficial', action: () => onNavigateTo('certificado') },
-      ],
+      // subActions eliminado (modal deprecado)
     },
     {
       id: 'DEGUELLO' as const,
@@ -233,15 +119,10 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
       badge: 'Control Sanitario',
       tariff: '$90.00 / cabeza',
       concepts: ['Derecho de Degüello y Control Sanitario', 'Guía de Tránsito'],
-      subActions: [
-        { label: 'Ventanilla de Sacrificio e Inspección Sanitaria', action: () => onNavigateTo('deguello'), primary: true },
-        { label: 'Generar Orden de Cobro en Finanzas ($270.00 · 3 cabezas)', action: () => onSelectCategory('DEGUELLO', buildPreloadedForCategory('DEGUELLO')) },
-        { label: 'Verificar Fierro de Procedencia en Padrón', action: () => onNavigateTo('buscador') },
-      ],
+      // subActions eliminado (modal deprecado)
     },
   ];
 
-  const currentCategoryData = categories.find((c) => c.id === selectedModalCategory);
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 pb-16">
@@ -316,7 +197,7 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
                 <motion.div
                   key={cat.id}
                   whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                  onClick={() => setSelectedModalCategory(cat.id)}
+                  onClick={() => onNavigateTo(cat.id === 'ALTA' ? 'alta' : cat.id === 'REVALIDACION' ? 'revalidacion' : cat.id === 'BAJA' ? 'baja' : cat.id === 'CONSTANCIA' ? 'constancia' : 'deguello')}
                   className={`bg-white rounded-3xl p-6 border-2 ${cat.borderColor} shadow-md hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden`}
                 >
                   {/* Banner superior de color gradiente */}
@@ -394,7 +275,7 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
                 <motion.div
                   key={cat.id}
                   whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                  onClick={() => setSelectedModalCategory(cat.id)}
+                  onClick={() => onNavigateTo(cat.id === 'ALTA' ? 'alta' : cat.id === 'REVALIDACION' ? 'revalidacion' : cat.id === 'BAJA' ? 'baja' : cat.id === 'CONSTANCIA' ? 'constancia' : 'deguello')}
                   className={`bg-white rounded-3xl p-6 border ${cat.borderColor} shadow-sm hover:shadow-xl transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden`}
                 >
                   {/* Banner superior de color gradiente */}
@@ -576,106 +457,6 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
         </div>
       </div>
 
-      {/* 4. MODAL DESPLEGABLE INTERACTIVO AL SELECCIONAR CUALQUIERA DE LAS 5 CATEGORÍAS */}
-      <AnimatePresence>
-        {selectedModalCategory && currentCategoryData && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/80 backdrop-blur-xs animate-fadeIn">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white border-2 border-stone-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col"
-            >
-              {/* Header Modal con color distintivo de la categoría */}
-              <div className={`p-5 bg-gradient-to-r ${currentCategoryData.color} text-white flex items-center justify-between`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-white shadow-inner">
-                    <currentCategoryData.icon size={26} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-white/80 block">
-                      Trámite Municipal Seleccionado
-                    </span>
-                    <h3 className="text-lg font-black font-cinzel text-white leading-tight">
-                      {currentCategoryData.title}
-                    </h3>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedModalCategory(null)}
-                  className="p-1.5 rounded-xl text-white/80 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Contenido del Trámite */}
-              <div className="p-5 sm:p-6 space-y-4">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                    Descripción del Trámite:
-                  </h4>
-                  <p className="text-xs sm:text-sm text-stone-700 mt-1 leading-relaxed">
-                    {currentCategoryData.description}
-                  </p>
-                </div>
-
-                {/* Tarifa y Conceptos */}
-                <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-2xl flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-stone-500 block">Cuota Reglamentaria:</span>
-                    <span className="text-base font-extrabold font-mono text-stone-900">
-                      {currentCategoryData.tariff}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2.5 py-1 bg-white border border-stone-300 rounded-lg text-stone-700">
-                    Ejercicio 2026-2029
-                  </span>
-                </div>
-
-                {/* Sub-acciones y Rutas Específicas */}
-                <div className="space-y-2 pt-1">
-                  <span className="text-xs font-bold text-stone-800 block">
-                    ¿Qué acción desea realizar a continuación?
-                  </span>
-
-                  {currentCategoryData.subActions.map((sub, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setSelectedModalCategory(null);
-                        sub.action();
-                      }}
-                      className={`w-full p-3 rounded-2xl border text-xs sm:text-sm font-bold flex items-center justify-between transition-all cursor-pointer ${
-                        sub.primary
-                          ? 'bg-amber-700 hover:bg-amber-600 text-white border-amber-800 shadow-md hover:scale-[1.01]'
-                          : 'bg-stone-50 hover:bg-stone-100 text-stone-800 border-stone-200'
-                      }`}
-                    >
-                      <span>{sub.label}</span>
-                      <ArrowRight size={16} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="px-5 py-3 bg-stone-100 border-t border-stone-200 flex items-center justify-between text-[11px] text-stone-500">
-                <span>Tesorería Municipal de Pánuco</span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedModalCategory(null)}
-                  className="font-bold text-stone-700 hover:text-stone-900 cursor-pointer"
-                >
-                  Cerrar
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

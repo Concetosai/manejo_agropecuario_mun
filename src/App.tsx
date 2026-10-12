@@ -349,7 +349,6 @@ export default function App() {
       <main className="flex-1">
         {activeTab === 'hub' && (
           <ProceduresHub
-            onSelectCategory={handleSelectProcedureCategory}
             onNavigateTo={(view) => setActiveTab(view as AppTab)}
             activeTab={activeTab}
             municipalConfig={municipalConfig}
