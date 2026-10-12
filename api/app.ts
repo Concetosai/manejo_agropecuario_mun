@@ -12,7 +12,7 @@ import {
   computeExpectedInitials,
   calculateRealConfidenceScore,
   MEXICAN_RFC_REGEX,
-} from './utils/ineOcrUtils';
+} from './utils/ineOcrUtils.js';
 
 dotenv.config();
 
