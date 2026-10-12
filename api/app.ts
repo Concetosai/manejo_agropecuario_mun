@@ -1,7 +1,19 @@
 import express, { type Express } from 'express';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
-import Tesseract from 'tesseract.js';
+// Lazy import para Vercel (evita crash al arrancar)
+let GoogleGenAI: any = null;
+try {
+  GoogleGenAI = require('@google/genai').GoogleGenAI;
+} catch (e) {
+  console.warn('[LazyImport] GoogleGenAI no disponible:', e);
+}
+// Lazy import para Vercel (evita crash al arrancar)
+let Tesseract: any = null;
+try {
+  Tesseract = require('tesseract.js');
+} catch (e) {
+  console.warn('[LazyImport] Tesseract no disponible:', e);
+}
 import crypto from 'crypto';
 import {
   parseIneTextWithCrossValidation,
@@ -580,6 +592,12 @@ Devuelve EXCLUSIVAMENTE el JSON válido, sin bloques markdown ni texto adicional
               cleanBase64 = cleanBase64.split('base64,')[1];
             }
             const imageBuffer = Buffer.from(cleanBase64, 'base64');
+            if (!Tesseract) {
+              throw new Error('Tesseract no disponible en este entorno');
+            }
+            if (!Tesseract) {
+              throw new Error('Tesseract no disponible en este entorno');
+            }
             const tesseractResult = await Tesseract.recognize(imageBuffer, 'spa+eng');
             extractedText = tesseractResult?.data?.text || '';
           }
@@ -842,6 +860,12 @@ Responde ÚNICAMENTE en JSON con la siguiente estructura:
             console.log('OK: PaddleOCR leyo el documento historico correctamente');
           } else {
             const imageBuffer = Buffer.from(cleanBase64, 'base64');
+            if (!Tesseract) {
+              throw new Error('Tesseract no disponible en este entorno');
+            }
+            if (!Tesseract) {
+              throw new Error('Tesseract no disponible en este entorno');
+            }
             const tesseractResult = await Tesseract.recognize(imageBuffer, 'spa+eng');
             extractedText = tesseractResult?.data?.text || '';
           }
