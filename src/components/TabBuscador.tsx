@@ -101,11 +101,11 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
   // Fusión de Base de Datos: Los fierros locales se anteponen con máxima prioridad
   const combinedDatabase = useMemo(() => {
     const municipalDb = getMunicipalDatabase();
-    const localIdSet = new Set(localFierros.map((r) => r.id.toLowerCase()));
-    const localFolioSet = new Set(localFierros.map((r) => r.folio.toLowerCase()));
+    const localIdSet = new Set(localFierros.map((r) => String(r.id || '').toLowerCase()));
+    const localFolioSet = new Set(localFierros.map((r) => String(r.folio || '').toLowerCase()));
 
     const filteredMunicipal = municipalDb.filter(
-      (r) => !localIdSet.has(r.id.toLowerCase()) && !localFolioSet.has(r.folio.toLowerCase())
+      (r) => !localIdSet.has(String(r.id || '').toLowerCase()) && !localFolioSet.has(String(r.folio || '').toLowerCase())
     );
 
     return [...localFierros, ...filteredMunicipal];
@@ -241,16 +241,16 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
       // 1. Global search matches any field
       if (qGlobal) {
         const matchesGlobal =
-          rec.ownerName.toLowerCase().includes(qGlobal) ||
-          rec.folio.toLowerCase().includes(qGlobal) ||
-          (rec.registrationNumber && rec.registrationNumber.toLowerCase().includes(qGlobal)) ||
-          rec.propertyName.toLowerCase().includes(qGlobal) ||
-          rec.ejido.toLowerCase().includes(qGlobal) ||
-          rec.uppKey.toLowerCase().includes(qGlobal) ||
-          rec.curp.toLowerCase().includes(qGlobal) ||
-          rec.rfc.toLowerCase().includes(qGlobal) ||
+          String(rec.ownerName || '').toLowerCase().includes(qGlobal) ||
+          String(rec.folio || '').toLowerCase().includes(qGlobal) ||
+          (rec.registrationNumber && String(rec.registrationNumber).toLowerCase().includes(qGlobal)) ||
+          String(rec.propertyName || '').toLowerCase().includes(qGlobal) ||
+          String(rec.ejido || '').toLowerCase().includes(qGlobal) ||
+          String(rec.uppKey || '').toLowerCase().includes(qGlobal) ||
+          String(rec.curp || '').toLowerCase().includes(qGlobal) ||
+          String(rec.rfc || '').toLowerCase().includes(qGlobal) ||
           (rec.phone && rec.phone.includes(qGlobal)) ||
-          rec.initials.toUpperCase().includes(qGlobal.toUpperCase()) ||
+          String(rec.initials || '').toUpperCase().includes(qGlobal.toUpperCase()) ||
           rec.issueDate.includes(qGlobal) ||
           String(rec.year).includes(qGlobal);
 
@@ -258,17 +258,17 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
       }
 
       // 2. Specific Owner
-      if (qOwner && !rec.ownerName.toLowerCase().includes(qOwner)) {
+      if (qOwner && !String(rec.ownerName || '').toLowerCase().includes(qOwner)) {
         return false;
       }
 
       // 3. Specific Folio
-      if (qFolio && !rec.folio.toLowerCase().includes(qFolio)) {
+      if (qFolio && !String(rec.folio || '').toLowerCase().includes(qFolio)) {
         return false;
       }
 
       // 4. Specific Property
-      if (qProp && !rec.propertyName.toLowerCase().includes(qProp)) {
+      if (qProp && !String(rec.propertyName || '').toLowerCase().includes(qProp)) {
         return false;
       }
 
@@ -291,14 +291,14 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
       // 7. UPP / CURP / RFC
       if (qUpp) {
         const matchUpp =
-          rec.uppKey.toLowerCase().includes(qUpp) ||
-          rec.curp.toLowerCase().includes(qUpp) ||
-          rec.rfc.toLowerCase().includes(qUpp);
+          String(rec.uppKey || '').toLowerCase().includes(qUpp) ||
+          String(rec.curp || '').toLowerCase().includes(qUpp) ||
+          String(rec.rfc || '').toLowerCase().includes(qUpp);
         if (!matchUpp) return false;
       }
 
       // 8. Initials
-      if (qInitials && !rec.initials.toUpperCase().includes(qInitials)) {
+      if (qInitials && !String(rec.initials || '').toUpperCase().includes(qInitials)) {
         return false;
       }
 

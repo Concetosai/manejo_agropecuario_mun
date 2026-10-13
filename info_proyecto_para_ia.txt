@@ -1,0 +1,1136 @@
+
+======================================================================
+1. ESTRUCTURA DE ARCHIVOS
+======================================================================
+.env
+.env.backup-20261009-050434
+.env.example
+bun.lock
+CONTEXTO_PROYECTO_PANUCO_plan_maestro.txt
+CONTEXTO_PROYECTO_PANUCO.md
+eng.traineddata
+extraer-info.ps1
+fix-antiduplicidad.ps1
+fix-validacion.ps1
+index.html
+info_proyecto_para_ia.txt
+metadata.json
+package-lock.json
+package.json
+patch-ocr.cjs
+README.md
+repomix-output.xml
+server.ts
+server.ts.backup
+spa.traineddata
+tsconfig.json
+vercel.json
+vite.config.ts
+api\app_backup.txt
+api\app.ts
+api\app.ts.bak_20261011_232324
+api\app.ts.bak_20261011_235546
+api\app.ts.bak_20261012_000424
+api\app.ts.bak_20261012_001013
+api\app.ts.bak_20261012_001631
+api\app.ts.bak_20261012_004509
+api\app.ts.bak_20261012_005127
+api\app.ts.bak_20261012_010140
+api\app.ts.bak_dedup_20261012_010207
+api\app.ts.bak_paddle_20261012_010912
+api\app.ts.bak_paddledata_20261012_011001
+api\app.ts.bak_types_20261012_010534
+api\index.ts
+api\index.ts.bak_20261011_232839
+api\index.ts.bak_20261012_000424
+api\index.ts.bak_20261012_001013
+api\index.ts.bak_20261012_001631
+api\tsconfig.json
+api\utils\ineOcrUtils.ts
+api\utils\ineOcrUtils.ts.bak_20261012_001631
+Google_docs\code.gs
+public\favicon.ico
+server\app.ts
+src\App.tsx
+src\App.tsx.bak_20261011_214729
+src\App.tsx.bak_FASE_0_2
+src\App.tsx.bak_FASE_0_2_antes_paso1
+src\App.tsx.bak_FASE_0_4_FIX_LIMPIEZA_REAL
+src\index.css
+src\main.tsx
+src\types.ts
+src\components\AuthModal.tsx
+src\components\AuthModal.tsx.bak_20261011_215536
+src\components\DocumentDispatchSection.tsx
+src\components\FichaRegistroTradicional.tsx
+src\components\FloatingAIAssistant.tsx
+src\components\IneScanner.tsx
+src\components\MissingFieldsModal.tsx
+src\components\Navbar.tsx
+src\components\Navbar.tsx.bak_20261011_024100
+src\components\PanucoMunicipalLogo.tsx
+src\components\PhotoCaptureModal.tsx
+src\components\ProductorAuditoriaModal.tsx
+src\components\ProductorAuditoriaModal.tsx.bak_FASE_0_3_BLOQUE_D
+src\components\ProductorAuditoriaModal.tsx.bak_FIX_DUPLICADO_CAMERA
+src\components\QrScannerModal.tsx
+src\components\SignaturePad.tsx
+src\components\TabAntiduplicidad.tsx
+src\components\TabAuditoria.tsx
+src\components\TabAuditoria.tsx.bak_20261011_215536
+src\components\TabBuscador.tsx
+src\components\TabBuscador.tsx.bak_20261011_032048
+src\components\TabCertificado.tsx
+src\components\TabCertificado.tsx.bak_FASE_0_2
+src\components\TabCertificado.tsx.bak_FASE_0_2_antes_paso3
+src\components\TabCertificado.tsx.bak_FASE_0_2_antes_paso3_v2
+src\components\TabCertificado.tsx.bak_FASE_0_2_antes_paso3_v3
+src\components\TabCertificado.tsx.bak_FASE_0_2_antes_paso3_v4
+src\components\TabConfiguracion.tsx
+src\components\TabConfiguracion.tsx.bak_20261011_214507
+src\components\TabCreador.tsx
+src\components\TabDigitalizacionHistorica.tsx
+src\components\TabDigitalizacionHistorica.tsx.bak_20261011_214507
+src\components\TabRegistro.tsx
+src\components\TabRegistro.tsx.bak_20261011_021857
+src\components\TabRegistro.tsx.bak_20261011_022027
+src\components\TabRegistro.tsx.bak_20261011_022136
+src\components\TabRegistro.tsx.bak_20261011_215536
+src\components\TabRegistro.tsx.bak_BLOQUE_E_MISSING_FIELDS
+src\components\TabRegistro.tsx.bak_FASE_0_2
+src\components\TabRegistro.tsx.bak_FASE_0_2_antes_paso2
+src\components\TabRegistro.tsx.bak_FASE_0_3_FIX_URLS
+src\components\TabRegistro.tsx.bak_FASE_0_3_FIX_URLS_v2
+src\components\TabRegistro.tsx.bak_FASE_0_3_SUBIDA_DIFERIDA_C1
+src\components\TabRegistro.tsx.bak_FASE_0_3_SUBIDA_DIFERIDA_C2
+src\components\TabRegistro.tsx.bak_FASE_0_3_SUBIDA_DIFERIDA_C3
+src\components\TabRegistro.tsx.bak_FASE_0_3_SUBIDA_DIFERIDA_C4
+src\components\TabReportes.tsx
+src\components\TabReportes.tsx.bak_20261011_215536
+src\components\TexasGuillocheCertificateBorder.tsx
+src\components\ValidationErrorsModal.tsx
+src\components\VectorComparisonModal.tsx
+src\components\VectorizacionFierroPanel.tsx
+src\components\VersionHistoryModal.tsx
+src\components\VersionHistoryModal.tsx.bak_20261011_215536
+src\components\Biometrics\BiometricEnrollmentModal.tsx
+src\components\Biometrics\BiometricVerificationModal.tsx
+src\components\Finance\ConfirmarPagoModal.tsx
+src\components\Finance\FinanceManager.tsx
+src\components\Finance\FinanceManager.tsx.bak_20261011_214507
+src\components\Finance\FinanceManager.tsx.bak_FASE_0_3_BLOQUE_C
+src\components\Finance\ModalEditarConcepto.tsx
+src\components\Finance\ModalEditarConcepto.tsx.bak_20261011_215024
+src\components\Finance\ModalHistorialPrecios.tsx
+src\components\Finance\ReciboPrintable.tsx
+src\components\Finance\ReciboPrintable.tsx.bak_FASE_0_3_BLOQUE_B
+src\components\Finance\SettingsFinanzasCatalogo.tsx
+src\components\Finance\SettingsFinanzasCatalogo.tsx.bak_20261011_215024
+src\components\Hub\ProceduresHub.tsx
+src\components\Hub\ProceduresHub.tsx.bak_20261011_023649
+src\components\Hub\ProceduresHub.tsx.bak_20261011_024100
+src\components\Hub\ProceduresHub.tsx.bak_20261011_213931
+src\components\Hub\ProceduresHub.tsx.bak_20261011_214645
+src\components\Views\BajaFierroView.tsx
+src\components\Views\BajaFierroView.tsx.bak_20261011_214507
+src\components\Views\ConstanciaView.tsx
+src\components\Views\ConstanciaView.tsx.bak_20261011_214507
+src\components\Views\DeguelloView.tsx
+src\components\Views\DeguelloView.tsx.bak_20261011_214507
+src\components\Views\RevalidacionView.tsx
+src\components\Views\RevalidacionView.tsx.bak_20261011_214507
+src\hooks\useDuplicateCheck.ts
+src\services\biometricsService.ts
+src\services\cloudinaryService.ts
+src\services\financeCatalogService.ts
+src\services\financeFirestore.ts
+src\services\financeFirestore.ts.bak_FASE_0_3_BLOQUE_C
+src\services\googleSheetsService.ts
+src\types\index.ts
+src\types\index.ts.bak_FASE_0_3
+src\types\index.ts.bak_FASE_0_3_BLOQUE_C
+src\utils\auditAuth.ts
+src\utils\brandVectorization.ts
+src\utils\canvasRenderer.ts
+src\utils\catalogs.ts
+src\utils\database.ts
+src\utils\database.ts.bak_FASE_0_3_FIX_MERGE
+src\utils\database.ts.bak_FASE_0_3_FIX_MERGE_V3
+src\utils\draftHistory.ts
+src\utils\formValidation.ts
+src\utils\formValidation.ts.bak_FASE_0_3_FIX_VALIDATION
+src\utils\googleSheetsIntegration.ts
+src\utils\googleSheetsIntegration.ts.bak_FASE_0_3
+src\utils\googleSheetsIntegration.ts.bak_FASE_0_3_FIX_MERGE_V2
+src\utils\guilloche.ts
+src\utils\historicalDocumentOcr.ts
+src\utils\ineOcrUtils.ts
+src\utils\ineOcrUtils.ts.bak-20261009-155845
+src\utils\localFierrosStorage.ts
+src\utils\numberingConfig.ts
+src\utils\pdfGenerator.ts
+src\utils\pdfOrdenCobro.ts
+src\utils\preferences.ts
+src\utils\reportsData.ts
+src\utils\similarity.ts
+src\utils\__tests__\biometrics.test.ts
+src\utils\__tests__\brandVectorization.test.ts
+src\utils\__tests__\ineOcr.test.ts
+test-images\test-ficha.jpeg
+test-images\test-ine.jpeg
+
+======================================================================
+2. CONTENIDO DE package.json
+======================================================================
+{
+  "name": "react-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx server.ts",
+    "start": "node server.ts",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist server.js",
+    "lint": "tsc --noEmit",
+    "test": "tsx --test src/utils/__tests__/*.test.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.1",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "firebase": "^12.19.0",
+    "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^2.5.1",
+    "html5-qrcode": "^2.3.8",
+    "jspdf": "^4.2.1",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "qrcode": "^1.5.4",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "tailwindcss": "^4.3.3",
+    "tesseract.js": "^7.0.0",
+    "tsx": "^4.21.0",
+    "vite": "^8.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "autoprefixer": "^10.4.21",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.7.2"
+  }
+}
+
+======================================================================
+3. FUNCIONES, CLASES Y EXPORTS
+======================================================================
+
+--- api\utils\ineOcrUtils.ts ---
+  L   6: export interface IneParsedData {
+  L  50: export function cleanIneName(rawNameText: string): {
+  L 111: export function computeExpectedInitials(
+  L 116: const p = (firstLastName || '').trim().toUpperCase();
+  L 117: const m = (secondLastName || '').trim().toUpperCase();
+  L 118: const n = (names || '').trim().toUpperCase();
+  L 150: export function crossValidateCurp(
+  L 164: const cleanCurp = (curp || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  L 235: export function crossValidateRfc(
+  L 248: const cleanRfc = (rfc || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  L 291: function beautifyAddress(raw: string): string {
+  L 347: export function cleanIneAddress(
+  L 396: export function calculateRealConfidenceScore(params: {
+  L 481: export function parseIneTextWithCrossValidation(
+
+--- api\app.ts ---
+  L  22: async function callPaddleOCRService(imageBase64: string): Promise<{ full_text: string; lines: any[] } | null> {
+  L  72: async function callGroqVision(imageBase64: string, prompt: string): Promise<any | null> {
+  L 140: async function callOllamaVision(imageBase64: string, prompt: string): Promise<any | null> {
+  L 192: export function createApp(): Express {
+  L 973: const rawCurp = (d.curp || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  L 978: const rawRfc = (d.rfc || '').trim().toUpperCase().replace(/[^A-Z0-9&Ñ]/g, '');
+  L 995: const rawPhone = (d.telefono || '').replace(/\D/g, '');
+  L1256: function parseHistoricalSheetFromText(rawText: string) {
+  L1257: const upper = (rawText || '').toUpperCase();
+  L1430: function generateMunicipalFallbackResponse(
+
+--- api\index.ts ---
+  L   6: async function getApp(): Promise<Express> {
+  L  21: export default async function handler(req: any, res: any) {
+
+--- server\app.ts ---
+  L  22: async function callPaddleOCRService(imageBase64: string): Promise<{ full_text: string; lines: any[] } | null> {
+  L  68: export function createApp(): Express {
+  L 759: const rawCurp = (d.curp || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  L 764: const rawRfc = (d.rfc || '').trim().toUpperCase().replace(/[^A-Z0-9&Ñ]/g, '');
+  L 781: const rawPhone = (d.telefono || '').replace(/\D/g, '');
+  L1036: function parseHistoricalSheetFromText(rawText: string) {
+  L1037: const upper = (rawText || '').toUpperCase();
+  L1210: function generateMunicipalFallbackResponse(
+
+--- src\components\Biometrics\BiometricEnrollmentModal.tsx ---
+  L  31: interface BiometricEnrollmentModalProps {
+  L  89: const handleStartEnrollment = async () => {
+  L 136: const handleRevoke = async (credentialId: string) => {
+
+--- src\components\Biometrics\BiometricVerificationModal.tsx ---
+  L  28: interface BiometricVerificationModalProps {
+  L 101: const handleScanFingerprint = async () => {
+  L 153: const handleVerifyPin = (e: React.FormEvent) => {
+
+--- src\components\Finance\ConfirmarPagoModal.tsx ---
+  L  25: interface ConfirmarPagoModalProps {
+  L  69: const formatDateSpanish = (dateStr?: string): string => {
+  L  86: const handleFotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  L 101: const handleQuitarFoto = () => {
+  L 106: const handleCerrar = () => {
+  L 118: const handleGuardarRecibo = async () => {
+  L 150: const html2canvas = (await import('html2canvas-pro')).default;
+  L 177: const marginX = (pdfWidth - finalWidth) / 2;
+
+--- src\components\Finance\FinanceManager.tsx ---
+  L  47: interface FinanceManagerProps {
+  L  58: export function normalizeConceptLabel(conceptKeyOrLabel: string): string {
+  L 148: const loadOrders = async () => {
+  L 262: const handleToggleConcept = (conceptLabel: string) => {
+  L 273: const handlePopulateFromProducer = () => {
+  L 304: const handleOpenConfirmPagoModal = (order: PaymentOrder) => {
+  L 312: const handleOpenEntregaModal = (order: PaymentOrder) => {
+  L 319: const handleMarcarEntrega = async () => {
+  L 364: const handleUpdateStatus = async (order: PaymentOrder, newStatus: 'PENDING' | 'PAID' | 'CANCELLED') => {
+  L 381: const handleDeleteOrder = async (order: PaymentOrder) => {
+  L 401: const handleCreateOrder = async (e: React.FormEvent) => {
+  L 516: const formatDateSpanish = (dateStr?: string) => {
+
+--- src\components\Finance\ModalEditarConcepto.tsx ---
+  L  18: interface ModalEditarConceptoProps {
+  L 125: const handleSubmit = async (e: React.FormEvent) => {
+
+--- src\components\Finance\ModalHistorialPrecios.tsx ---
+  L  15: interface ModalHistorialPreciosProps {
+
+--- src\components\Finance\ReciboPrintable.tsx ---
+  L   5: interface ReciboPrintableProps {
+
+--- src\components\Finance\SettingsFinanzasCatalogo.tsx ---
+  L  54: interface SettingsFinanzasCatalogoProps {
+  L  86: const loadData = async () => {
+  L 121: const handleConceptSaved = (saved: ConceptoFinanciero) => {
+  L 137: const handleToggleActive = async (c: ConceptoFinanciero) => {
+  L 148: const handleDeleteConcept = async (c: ConceptoFinanciero) => {
+  L 159: const handleSaveGeneralConfig = (e: React.FormEvent) => {
+
+--- src\components\Hub\ProceduresHub.tsx ---
+  L  21: export type ProcedureCategoryId = 'ALTA' | 'REVALIDACION' | 'BAJA' | 'CONSTANCIA' | 'DEGUELLO';
+  L  23: interface ProceduresHubProps {
+
+--- src\components\Views\BajaFierroView.tsx ---
+  L  23: interface BajaFierroViewProps {
+  L  89: const handleBuscarFolio = async () => {
+  L 137: const handleGeneratePaymentOrder = async () => {
+  L 227: const handleLimpiar = () => {
+
+--- src\components\Views\ConstanciaView.tsx ---
+  L  23: interface ConstanciaViewProps {
+  L 102: const handleBuscarFolio = async () => {
+  L 155: const handleGeneratePaymentOrder = async () => {
+  L 248: const handleLimpiar = () => {
+
+--- src\components\Views\DeguelloView.tsx ---
+  L  21: interface DeguelloViewProps {
+  L  36: function generarFolioGuia(): string {
+  L  87: const handleBuscarFolio = async () => {
+  L 139: const handleGeneratePaymentOrder = async () => {
+  L 245: const handleLimpiar = () => {
+  L 261: const handleRegenerarGuia = () => {
+
+--- src\components\Views\RevalidacionView.tsx ---
+  L  23: interface RevalidacionViewProps {
+  L  38: function calcularNuevaVigencia(vigenciaActual?: string): string {
+  L 100: const handleBuscarFolio = async () => {
+  L 157: const handleGeneratePaymentOrder = async () => {
+  L 238: const handleLimpiar = () => {
+
+--- src\components\AuthModal.tsx ---
+  L  21: interface AuthModalProps {
+  L  63: const handleLogin = (e: React.FormEvent) => {
+  L  80: const handleRegister = (e: React.FormEvent) => {
+  L 105: const handleRecovery = (e: React.FormEvent) => {
+
+--- src\components\DocumentDispatchSection.tsx ---
+  L  24: interface DocumentDispatchSectionProps {
+  L 170: const handleSendWhatsapp = () => {
+  L 208: const handleSendEmail = () => {
+  L 214: const targetEmail = (recipientEmail || '').trim();
+  L 247: const handleCopyWhatsapp = async () => {
+  L 258: const handleCopyEmail = async () => {
+  L 270: const handleNativeShare = async () => {
+
+--- src\components\FichaRegistroTradicional.tsx ---
+  L   6: interface FichaRegistroTradicionalProps {
+  L  36: const formattedSurface = (() => {
+  L  46: const formattedSpecies = (() => {
+  L  53: const formatDateSpanish = (dateStr?: string) => {
+
+--- src\components\FloatingAIAssistant.tsx ---
+  L  27: interface FloatingAIAssistantProps {
+  L  34: interface ChatMessage {
+  L 110: const handleResize = () => {
+  L 125: const handleStartDrag = (clientX: number, clientY: number) => {
+  L 137: const handleMove = (e: MouseEvent | TouchEvent) => {
+  L 157: const handleEnd = () => {
+  L 177: const getDatabaseContext = () => {
+  L 214: const handleSendMessage = async (textToSend?: string) => {
+  L 215: const query = (textToSend || inputMessage).trim();
+  L 282: const handleQuickAction = (actionText: string) => {
+  L 286: const handleClearHistory = () => {
+  L 299: const renderFormattedText = (content: string) => {
+  L 338: function formatInlineMarkdown(text: string): string {
+
+--- src\components\IneScanner.tsx ---
+  L  29: export interface IneScanResult {
+  L  62: interface IneScannerProps {
+  L  94: function applyTransformToImage(
+  L 146: type ScannerMode = 'idle' | 'camera' | 'adjusting' | 'scanning' | 'verifying' | 'alert' | 'applied';
+  L 234: const stopCameraStream = () => {
+  L 247: const handleStartCamera = async () => {
+  L 273: const handleCaptureCamera = () => {
+  L 300: const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  L 321: const handleRotateCw = () => {
+  L 325: const handleRotateCcw = () => {
+  L 329: const handleSetOrientation = (orientation: 'horizontal' | 'vertical') => {
+  L 337: const handleToggleFlip = () => {
+  L 341: const handleResetOrientation = () => {
+  L 346: const handleProcessFromAdjusting = async () => {
+  L 366: const executeOcrExtraction = async (
+  L 417: const handleRecheckOcrFromVerifying = async () => {
+  L 436: const handleConfirmAndApply = () => {
+  L 442: const handleResetScanner = () => {
+  L 453: const handleReturnToAdjust = () => {
+
+--- src\components\MissingFieldsModal.tsx ---
+  L   4: export interface MissingField {
+  L   9: interface MissingFieldsModalProps {
+
+--- src\components\Navbar.tsx ---
+  L  18: export type AppTab =
+  L  38: interface NavbarProps {
+
+--- src\components\PanucoMunicipalLogo.tsx ---
+  L   4: interface PanucoMunicipalLogoProps {
+
+--- src\components\PhotoCaptureModal.tsx ---
+  L  25: interface PhotoCaptureModalProps {
+  L 212: const handleToggleFacingMode = () => {
+  L 218: const processAndCompressCanvas = (
+  L 279: const executeCapture = () => {
+  L 309: const handleCaptureFromVideo = () => {
+  L 315: const handleTimedCapture = () => {
+  L 331: const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  L 365: const handleRotatePreview = () => {
+  L 369: const nextRotation = (rotationDegrees + 90) % 360;
+  L 378: const handleRetake = () => {
+  L 389: const handleConfirm = () => {
+  L 397: const handleClose = () => {
+
+--- src\components\ProductorAuditoriaModal.tsx ---
+  L  15: interface ProductorAuditoriaModalProps {
+  L  25: type TabId = 'imagenes' | 'vector' | 'pagos' | 'antiduplicidad';
+  L  76: const curp = (record.curp || '').toUpperCase().trim();
+  L  77: const rfc = (record.rfc || '').toUpperCase().trim();
+  L  78: const nombre = (record.ownerName || '').toUpperCase().trim();
+  L  98: const imgIne = (record as any).ineDriveUrl
+  L 103: const imgFoto = (record as any).fotoTitularDriveUrl
+  L 108: const imgFirma = (record as any).firmaDriveUrl
+  L 113: const imgFierro = (record as any).url_fierro
+  L 119: const imgFicha = (record as any).url_ficha || record.imagenes?.ficha_original;
+
+--- src\components\QrScannerModal.tsx ---
+  L   5: interface QrScannerModalProps {
+  L  30: const extractFolio = (text: string): string | null => {
+  L  54: const handleQrDetected = (decodedText: string) => {
+  L  73: const startScanner = async () => {
+  L 134: const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+
+--- src\components\SignaturePad.tsx ---
+  L  16: interface SignaturePadProps {
+  L  91: const saveCurrentState = () => {
+  L 105: const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  L 124: const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  L 138: const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  L 151: const stopDrawing = () => {
+  L 162: const handleClear = () => {
+  L 175: const handleUndo = () => {
+  L 191: const handleLoadSample = () => {
+  L 247: const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  L 271: const centerShiftX = (rect.width - img.width * ratio) / 2;
+  L 272: const centerShiftY = (rect.height - img.height * ratio) / 2;
+
+--- src\components\TabAntiduplicidad.tsx ---
+  L  24: interface TabAntiduplicidadProps {
+  L 132: const start = (currentPage - 1) * pageSize;
+  L 136: const handleApplyAlternative = (proposal: BrandConfig) => {
+
+--- src\components\TabAuditoria.tsx ---
+  L  20: interface TabAuditoriaProps {
+  L  74: const handleExportCsv = () => {
+  L  97: const handleSimulateLog = () => {
+  L 105: const getActionBadge = (action: AuditActionType) => {
+
+--- src\components\TabBuscador.tsx ---
+  L  31: interface TabBuscadorProps {
+  L  89: const handleStorageUpdate = () => {
+  L 150: const handleCompareSimilarity = (record: HistoricalRecord) => {
+  L 163: const applyPreset = (presetName: string) => {
+  L 194: const resetFilters = () => {
+  L 336: const start = (currentPage - 1) * pageSize;
+  L 343: const handleQrScanSuccess = (folio: string) => {
+  L 362: const handleLoadRecord = (record: HistoricalRecord) => {
+  L 377: const handleExportSearchResults = () => {
+
+--- src\components\TabCertificado.tsx ---
+  L  15: const formatOfficialDate = (dateStr?: string): string => {
+  L  60: interface TabCertificadoProps {
+  L 214: const handleBeforePrint = (e: Event) => {
+  L 223: const handlePrint = () => {
+  L 245: const handleDownloadPdf = async (customSelection?: 'both' | 'certificate' | 'id_card') => {
+  L 311: const scrollToDispatchSection = () => {
+  L 318: const handleGenerarOrdenFinanzas = () => {
+  L 339: const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+--- src\components\TabConfiguracion.tsx ---
+  L  55: interface TabConfiguracionProps {
+  L  98: const handleFieldChange = (field: keyof MunicipalConfig, value: string) => {
+  L 109: const handleExportDatabase = () => {
+  L 132: const handleImportDatabase = (e: React.ChangeEvent<HTMLInputElement>) => {
+  L 152: const handleResetDefaults = () => {
+
+--- src\components\TabCreador.tsx ---
+  L  21: interface TabCreadorProps {
+  L  84: const handleReanalizar = () => {
+  L 104: const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  L 111: const x = (e.clientX - rect.left) * scaleX;
+  L 112: const y = (e.clientY - rect.top) * scaleY;
+  L 118: const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  L 125: const x = (e.clientX - rect.left) * scaleX;
+  L 126: const y = (e.clientY - rect.top) * scaleY;
+  L 146: const handleMouseUp = () => {
+  L 159: const handleClearFreehand = () => {
+  L 166: const handleGenerateGuaranteedUnique = () => {
+  L 175: const handleDownloadPng = () => {
+
+--- src\components\TabDigitalizacionHistorica.tsx ---
+  L  26: interface TabDigitalizacionHistoricaProps {
+  L  33: interface Coords {
+  L 123: const copyVectorToClipboard = async () => {
+  L 147: const showToast = (message: string, type: 'success' | 'warning' = 'success') => {
+  L 155: const captureCroppedFierroFromStep3 = (
+  L 202: const drawX = (targetSize - drawW) / 2;
+  L 203: const drawY = (targetSize - drawH) / 2;
+  L 225: const goToStep = (step: number) => {
+  L 286: const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  L 307: const executeOCR = async (forcedImage?: string) => {
+  L 337: const rawCurp = (d.curp || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  L 341: const rawRfc = (d.rfc || '').trim().toUpperCase().replace(/[^A-Z0-9&Ñ]/g, '');
+  L 355: const rawPhone = (d.telefono || '').replace(/\D/g, '');
+  L 438: const applyEnhancement = (type: 'grayscale' | 'contrast' | 'sharpen' | 'invert') => {
+  L 455: const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+  L 489: const resetEnhancements = () => {
+  L 496: const resetDetectionBox = () => {
+  L 504: const autoDetectFierro = () => {
+  L 540: const adjustHorizontalWidth = (delta: number) => {
+  L 547: const adjustVerticalHeight = (delta: number) => {
+  L 554: const setBoxPreset = (type: 'square' | 'wide' | 'tall' | 'expand') => {
+  L 587: const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+  L 605: const handleResizeStart = (e: React.MouseEvent | React.TouchEvent, handle: string) => {
+  L 624: const handleMove = (e: MouseEvent | TouchEvent) => {
+  L 690: const handleEnd = () => {
+  L 711: const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+  L 716: const executeVectorization = async () => {
+  L 787: const drawX = (targetSize - drawW) / 2;
+  L 788: const drawY = (targetSize - drawH) / 2;
+  L 848: const densityPct = (embedding.density * 100).toFixed(0);
+  L 858: const getDerivedInitials = (name: string) => {
+  L 859: const clean = (name || '').replace(/^(DON|DOÑA|SR\.|SRA\.|C\.)\s+/i, '').trim();
+  L 866: const parseSurfaceNumber = (val: string) => {
+  L 878: const saveToDatabase = async () => {
+  L 893: const curpRaw = (formData.curp || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  L 896: const rfcRaw = (formData.rfc || '').trim().toUpperCase().replace(/[^A-Z0-9&Ñ]/g, '');
+  L 911: const rawPhone = (formData.telefono || '').replace(/\D/g, '');
+  L 916: const ownerUpper = (formData.productor || '').trim().toUpperCase();
+  L1035: const handleApplyToRegistration = () => {
+  L1062: const resetProcess = () => {
+  L1994: const bgPct = ((bgCount / 64) * 100).toFixed(1);
+  L1995: const medPct = ((medCount / 64) * 100).toFixed(1);
+  L1996: const hvyPct = ((hvyCount / 64) * 100).toFixed(1);
+  L2089: const col = (i % 8) + 1;
+  L2105: const t = (val - 0.40) / (0.70 - 0.40);
+  L2113: const t = (val - 0.70) / (1.00 - 0.70);
+
+--- src\components\TabRegistro.tsx ---
+  L  99: interface TabRegistroProps {
+  L 111: type StepId = 1 | 2 | 3 | 4 | 5;
+  L 114: function compressPhotoLocally(dataUrl: string, maxWidth = 400, quality = 0.75): Promise<string> {
+  L 258: const handleRecoverInterruptedDraft = () => {
+  L 278: const handleDismissInterruptedDraft = () => {
+  L 284: const handleRestoreVersion = (version: RegistrationDraftVersion) => {
+  L 303: const handleCreateManualCheckpoint = (customLabel: string) => {
+  L 312: const handleDeleteVersion = (id: string) => {
+  L 317: const handleClearAllVersions = () => {
+  L 352: const handleFieldChange = (field: keyof ProducerData, value: string | number) => {
+  L 374: const handleAddNewEjido = (e?: React.FormEvent) => {
+  L 394: const handleAddNewMunicipio = (e?: React.FormEvent) => {
+  L 408: const handleSave = async (e?: React.FormEvent): Promise<boolean> => {
+  L 594: const handleApplyIneData = async (ineData: IneScanResult) => {
+  L 627: const handleClearForm = () => {
+  L 664: const getDerivedInitials = (): string => {
+  L 677: const computeFechaExpiracion = (): string => {
+  L 692: const validateStep = (step: StepId): boolean => {
+  L 807: const validateStepComplete = (step: StepId): MissingField[] => {
+  L 886: const advanceToNextStep = () => {
+  L 888: const nextStep = (currentStep + 1) as StepId;
+  L 900: const handleNext = () => {
+  L 913: const handlePrev = () => {
+
+--- src\components\TabReportes.tsx ---
+  L  25: interface TabReportesProps {
+  L  30: type PeriodSelection = 'semestre_1' | 'semestre_2' | 'anual_2026' | 'mes_especifico';
+  L 274: const handlePrintDeliveryReport = () => {
+  L 283: const handleExportCSV = () => {
+  L 325: const handleSaveNewActivity = (e: React.FormEvent) => {
+
+--- src\components\ValidationErrorsModal.tsx ---
+  L   5: interface ValidationErrorsModalProps {
+
+--- src\components\VectorComparisonModal.tsx ---
+  L  22: interface VectorComparisonModalProps {
+
+--- src\components\VectorizacionFierroPanel.tsx ---
+  L   4: interface VectorizacionFierroPanelProps {
+  L  19: const executeVectorization = async () => {
+  L  44: const drawX = (256 - drawW) / 2;
+  L  45: const drawY = (256 - drawH) / 2;
+  L 154: const col = (i % 8) + 1;
+  L 166: const t = (val - 0.40) / 0.30;
+  L 173: const t = (val - 0.70) / 0.30;
+
+--- src\components\VersionHistoryModal.tsx ---
+  L  22: interface VersionHistoryModalProps {
+  L  51: const handleCreateCheckpoint = (e: React.FormEvent) => {
+  L  59: const handleRestore = (version: RegistrationDraftVersion) => {
+  L  68: const getSourceBadge = (source: RegistrationDraftVersion['source']) => {
+
+--- src\hooks\useDuplicateCheck.ts ---
+  L   5: export interface DuplicateResult {
+  L  15: function normalizeName(name: string): string {
+  L  25: export function useDuplicateCheck(producerData: ProducerData, delayMs: number = 700): DuplicateResult {
+  L  30: const curp = (producerData.curp || '').trim().toUpperCase();
+  L  31: const ine = (producerData.ine || '').trim().toUpperCase();
+  L  32: const nombre = (producerData.fullName || '').trim();
+
+--- src\services\biometricsService.ts ---
+  L  39: export function bufferToBase64Url(buffer: ArrayBuffer): string {
+  L  48: export function base64UrlToBuffer(base64url: string): ArrayBuffer {
+  L  62: export function generateRandomChallenge(length = 32): Uint8Array {
+  L  77: export async function isBiometricsSupported(): Promise<{
+  L 126: export function triggerHaptic(type: 'success' | 'error' | 'click' | 'lockout') {
+  L 145: export function getStoredBiometricCredentials(userId?: string): BiometricCredential[] {
+  L 160: export function saveStoredBiometricCredentials(credentials: BiometricCredential[]): void {
+  L 169: interface LockoutState {
+  L 174: export function getLockoutState(userId: string): LockoutState {
+  L 190: export function recordFailedAttempt(userId: string): LockoutState {
+  L 211: export function clearLockoutState(userId: string): void {
+  L 223: export async function enrollBiometricFingerprint(params: {
+  L 280: const newCredential = (await navigator.credentials.create(creationOptions)) as PublicKeyCredential | null;
+  L 368: export async function verifyBiometricFingerprint(params: {
+  L 433: const assertion = (await navigator.credentials.get(getOptions)) as PublicKeyCredential | null;
+  L 528: export function verifyPinFallback(user: MunicipalUser, pin: string): boolean {
+  L 553: export async function revokeBiometricCredential(userId: string, credentialId: string): Promise<boolean> {
+
+--- src\services\cloudinaryService.ts ---
+  L   9: export interface CloudinaryUploadResult {
+  L  16: export async function subirImagenACloudinary(
+  L  61: export async function eliminarImagenDeCloudinary(_publicId: string): Promise<boolean> {
+
+--- src\services\financeCatalogService.ts ---
+  L 254: function getDb(): Firestore | null {
+  L 277: export function getLocalConcepts(): ConceptoFinanciero[] {
+  L 291: export function saveLocalConcepts(concepts: ConceptoFinanciero[]): void {
+  L 299: export function getLocalPriceHistory(): HistorialPrecio[] {
+  L 313: export function saveLocalPriceHistory(history: HistorialPrecio[]): void {
+  L 321: export function getLocalFinanceConfig(): ConfigFinanzas {
+  L 334: export function saveLocalFinanceConfig(config: ConfigFinanzas): void {
+  L 349: export async function getFinanceConcepts(filter?: {
+  L 405: export async function getFinanceConceptById(idOrCode: string): Promise<ConceptoFinanciero | null> {
+  L 413: export async function createFinanceConcept(
+  L 468: export async function updateFinanceConcept(
+  L 545: export async function toggleFinanceConceptActive(
+  L 568: export async function softDeleteFinanceConcept(
+  L 580: export function getConceptPriceHistory(conceptoId: string): HistorialPrecio[] {
+  L 591: export function getFinanceGeneralConfig(): ConfigFinanzas {
+  L 595: export function saveFinanceGeneralConfig(
+  L 624: export function buildConceptoEnOrden(
+  L 656: export function calculateOrderTotals(items: ConceptoEnOrden[]): {
+  L 682: export interface ConceptIncomeStat {
+  L 690: export function computeIncomeByConcept(orders: PaymentOrder[]): ConceptIncomeStat[] {
+  L 734: export interface PeriodIncomeStat {
+  L 740: export function computeIncomeByPeriod(orders: PaymentOrder[]): PeriodIncomeStat[] {
+
+--- src\services\financeFirestore.ts ---
+  L  22: const GOOGLE_API_URL = (import.meta as any).env?.VITE_GOOGLE_API_URL || '';
+  L  23: const GOOGLE_TOKEN = (import.meta as any).env?.VITE_GOOGLE_TOKEN || '';
+  L  25: interface SheetPagoResponse {
+  L  37: async function subirPagoASheets(order: PaymentOrder): Promise<{ success: boolean; queued?: boolean; error?: string }> {
+  L  94: function parseConcepts(raw: any): string[] {
+  L 106: async function obtenerPagosDeSheet(): Promise<{ success: boolean; pagos?: PaymentOrder[]; error?: string }> {
+  L 158: async function actualizarPagoEnSheet(folio: string, newStatus: string): Promise<boolean> {
+  L 178: async function eliminarPagoEnSheet(folio: string): Promise<boolean> {
+  L 214: function getDb(): Firestore | null {
+  L 237: function getLocalOrders(): PaymentOrder[] {
+  L 248: function saveLocalOrders(orders: PaymentOrder[]): void {
+  L 259: export async function getPaymentOrders(): Promise<PaymentOrder[]> {
+  L 296: export async function createPaymentOrder(
+  L 342: export async function updatePaymentOrderStatus(
+  L 379: export async function deletePaymentOrder(orderId: string): Promise<void> {
+  L 409: export async function getPagosByFolioFierro(folioFierro: string): Promise<PaymentOrder[]> {
+  L 415: export function generateNextFolio(currentOrders?: PaymentOrder[]): string {
+  L 434: export async function generateNextFolioAsync(): Promise<string> {
+  L 452: export function numberToSpanishCurrencyWords(amount: number): string {
+  L 497: function convertGroup(n: number): string {
+
+--- src\services\googleSheetsService.ts ---
+  L  18: const GOOGLE_API_URL = (import.meta as any).env?.VITE_GOOGLE_API_URL || '';
+  L  19: const GOOGLE_TOKEN = (import.meta as any).env?.VITE_GOOGLE_TOKEN || '';
+  L  27: export interface GoogleRegistro {
+  L  79: export interface GoogleApiResponse {
+  L  93: export interface OfflineQueueItem {
+  L 102: export interface GoogleConstancia {
+  L 116: export interface GoogleDeguello {
+  L 137: function getOfflineQueue(): OfflineQueueItem[] {
+  L 148: function saveOfflineQueue(queue: OfflineQueueItem[]): void {
+  L 156: function addToOfflineQueue(type: OfflineQueueItem['type'], payload: any): OfflineQueueItem {
+  L 170: export function getQueueCount(): number {
+  L 174: export async function processOfflineQueue(): Promise<{ processed: number; failed: number }> {
+  L 217: async function callGoogleApi(
+  L 267: export async function pingGoogleBackend(): Promise<boolean> {
+  L 276: export async function guardarRegistroEnSheet(registro: GoogleRegistro): Promise<{
+  L 311: export async function obtenerRegistrosDelSheet(folio?: string): Promise<{
+  L 345: export async function obtenerRegistroPorFolio(folio: string): Promise<{
+  L 373: export async function revalidarRegistroEnSheet(params: {
+  L 400: export async function cancelarRegistroEnSheet(params: {
+  L 433: export async function emitirConstanciaEnSheet(params: {
+  L 464: export async function registrarDeguelloEnSheet(params: {
+  L 501: export async function buscarPropietarioEnSheet(q: string): Promise<{
+  L 529: export async function obtenerConstanciasDeSheet(params?: {
+  L 569: export async function obtenerDeguellosDeSheet(params?: {
+  L 619: export async function confirmarPagoRecibidoEnSheet(params: {
+  L 663: export async function marcarEntregaCompletadaEnSheet(params: {
+  L 709: export async function subirArchivoADrive(
+  L 761: export async function actualizarUrlsRecibo(
+
+--- src\types\index.ts ---
+  L   1: export type TraditionalSymbol =
+  L  16: export type BrandOrientation =
+  L  23: export type FinishStyle =
+  L  30: export type TenureType = 'EJIDAL' | 'PROPIEDAD';
+  L  32: export type AssociatedRancherOption = 'NO' | 'SÍ';
+  L  34: export type LivestockSpecies =
+  L  43: export type ZootechnicalPurpose =
+  L  67: export interface BrandConfig {
+  L  81: export interface ProducerData {
+  L 136: export interface DigitalExpedienteImages {
+  L 145: export type TipoRegistroExpediente = 'HISTORICO' | 'NUEVO_ALTA';
+  L 147: export interface HistoricalRecord {
+  L 207: export interface DigitizedHistoricalDocument {
+  L 255: export interface SimilarityMatch {
+  L 261: export interface MunicipalConfig {
+  L 283: export type MunicipalRole = 'Administrador' | 'Oficial de Registro' | 'Auditor' | 'Inspector';
+  L 285: export interface MunicipalUser {
+  L 297: export type AuditActionType =
+  L 324: export interface AuditLogEntry {
+  L 339: export type ActivityCategory =
+  L 350: export interface MunicipalSupportActivity {
+  L 365: export type CategoriaConceptoFinanciero =
+  L 372: export interface ConceptoFinanciero {
+  L 396: export interface HistorialPrecio {
+  L 407: export interface ConceptoEnOrden {
+  L 422: export interface ConfigFinanzas {
+  L 435: export interface PaymentOrder {
+  L 484: export interface PreloadedOrderData {
+  L 505: export type BiometricFingerIndex =
+  L 512: export type BiometricCredentialStatus = 'ACTIVE' | 'REVOKED' | 'LOCKED';
+  L 514: export interface BiometricCredential {
+  L 534: export interface BiometricVerificationResult {
+
+--- src\utils\auditAuth.ts ---
+  L 127: export function getMunicipalUsers(): MunicipalUser[] {
+  L 140: export function getCurrentUser(): MunicipalUser {
+  L 154: export function setCurrentUser(user: MunicipalUser): void {
+  L 165: export function registerMunicipalUser(newUser: Omit<MunicipalUser, 'id' | 'badgeNumber'>): MunicipalUser {
+  L 190: export function getAuditLogs(): AuditLogEntry[] {
+  L 203: export function recordAuditLog(entry: {
+  L 241: function formatTimestamp(d: Date): string {
+  L 242: const pad = (n: number) => String(n).padStart(2, '0');
+
+--- src\utils\brandVectorization.ts ---
+  L  10: export interface VectorizationResult {
+  L  24: export interface VectorizeOptions {
+  L  38: export function detectBrandRegion(sourceCanvas: HTMLCanvasElement): {
+  L  66: const topIdx = (0 * w + x) * 4;
+  L  67: const botIdx = ((h - 1) * w + x) * 4;
+  L  89: const idx = (y * w + x) * 4;
+  L 184: export function extractFierroRegion(
+  L 250: export function vectorizeBrandImage(
+  L 563: function generateSvgPathFromBounds(
+  L 583: const topWeight = (vector[0] + vector[1] + vector[2] + vector[3]) / 4;
+  L 584: const bottomWeight = (vector[12] + vector[13] + vector[14] + vector[15]) / 4;
+  L 611: export function calculateVectorCosineSimilarity(vecA: number[], vecB: number[]): number {
+  L 632: export interface FierroEmbeddingResult {
+  L 656: export function computeVectorChecksum(embedding: number[]): string {
+  L 668: const hex1 = (h1 >>> 0).toString(16).padStart(8, '0');
+  L 669: const hex2 = (h2 >>> 0).toString(16).padStart(8, '0');
+  L 673: export class FierroVectorizer {
+  L 707: const x = (256 - img.width * scale) / 2;
+  L 708: const y = (256 - img.height * scale) / 2;
+  L 849: const hasStrokes = (heavyCellCount >= 2 || activeCellCount >= 3) && maxX >= minX && maxY >= minY;
+  L 951: const v = (grayData[i] - 0.5) * factor + 0.5;
+  L 972: const idx = (y + ky) * width + (x + kx);
+  L 973: const kernelIdx = (ky + 1) * 3 + (kx + 1);
+
+--- src\utils\canvasRenderer.ts ---
+  L   3: export interface RenderOptions {
+  L   9: export function renderBrandToCanvas(
+  L  99: const initials = (config.initials || 'P').toUpperCase();
+  L 106: const textY = (config.topSymbol !== 'none' ? 10 : 0) + (config.bottomSymbol !== 'none' ? -10 : 0);
+  L 165: function drawSymbol(
+  L 387: export function getBrandDataUrl(config: BrandConfig, size = 1024): string {
+
+--- src\utils\catalogs.ts ---
+  L  28: export function getStoredEjidos(): string[] {
+  L  46: export function addCustomEjido(name: string): string[] {
+  L  66: export function getStoredMunicipios(): string[] {
+  L  84: export function addCustomMunicipio(name: string): string[] {
+
+--- src\utils\database.ts ---
+  L  18: export function isCorruptedMunicipalRecord(r: HistoricalRecord): boolean {
+  L  21: const toStr = (v: any): string => (v === null || v === undefined) ? '' : String(v);
+  L  40: export function cleanCorruptedTestRecords(): number {
+  L  62: export function getMunicipalDatabase(): HistoricalRecord[] {
+  L 147: export function addNewMunicipalRecord(record: HistoricalRecord): void {
+  L 198: export function clearMunicipalDatabaseCache(): void {
+
+--- src\utils\draftHistory.ts ---
+  L   4: export interface RegistrationDraftVersion {
+  L  36: function logOnce(key: string, ...args: any[]) {
+  L  53: function safeSetItem(key: string, value: string): boolean {
+  L 106: function safeGetItem(key: string): string | null {
+  L 123: function safeRemoveItem(key: string): void {
+  L 131: function jsonSize(obj: any): number {
+  L 143: function sanitizeProducerData(data: ProducerData): ProducerData {
+  L 168: export function calculateCompletion(data: ProducerData): { percentage: number; valid: number; total: number } {
+  L 180: export function hasSubstantialData(data: ProducerData | null | undefined): boolean {
+  L 196: export function getSavedDraftVersions(): RegistrationDraftVersion[] {
+  L 213: export function saveDraftVersion(
+  L 295: export function saveCurrentSessionDraft(data: ProducerData, currentStep: number = 1): void {
+  L 316: export function getInterruptedSessionDraft(): {
+  L 350: export function clearCurrentSessionDraft(): void {
+  L 361: export function deleteDraftVersion(id: string): RegistrationDraftVersion[] {
+  L 376: export function clearAllDraftVersions(): void {
+  L 388: export function getDraftStorageStats(): {
+
+--- src\utils\formValidation.ts ---
+  L  14: export function sanitizeFullName(raw: string): string {
+  L  24: export function sanitizeCurp(raw: string): string {
+  L  35: export function sanitizeIne(raw: string): string {
+  L  45: export function sanitizeRfc(raw: string): string {
+  L  56: export function formatAndSanitizePhone(raw: string): string {
+  L  70: export function sanitizeEmail(raw: string): string {
+  L  77: export function sanitizeDecimal(raw: string): string {
+  L  90: export function sanitizeInteger(raw: string): string {
+  L  98: export function isStandardSiniigaUpp(upp: string): boolean {
+  L  99: const trimmed = (upp || '').trim().toUpperCase();
+  L 110: export function formatAndSanitizeUppKey(raw: string): string {
+  L 143: export function sanitizeUppKey(raw: string): string {
+  L 151: export interface ValidationResult {
+  L 160: export function validateFullName(name: any): ValidationResult {
+  L 179: export function validateCurp(curp: any): ValidationResult {
+  L 205: export function validateIne(ine: any): ValidationResult {
+  L 239: export function validateRfc(rfc: any): ValidationResult {
+  L 264: export function validatePhone(phone: any): ValidationResult {
+  L 285: export function validateEmail(email: any): ValidationResult {
+  L 308: export function validateAddress(address: any): ValidationResult {
+  L 322: export function validateMunicipio(municipio: any): ValidationResult {
+  L 333: export function validateEjido(ejido: any): ValidationResult {
+  L 344: export function validatePropertyName(name: any): ValidationResult {
+  L 358: export function validateSurface(hectares: number): ValidationResult {
+  L 370: export function validateUppKey(upp: any): ValidationResult {
+  L 384: export function validateCattleCount(count: number): ValidationResult {
+  L 394: export function validateFolio(folio: any): ValidationResult {
+  L 408: export function validateRegistrationNumber(regNum: any): ValidationResult {
+  L 419: export function validateBookNumber(book: any): ValidationResult {
+  L 430: export function validateFolioPage(page: any): ValidationResult {
+  L 441: export function validateValidityRange(range: any): ValidationResult {
+  L 452: export function validateIssueDate(date: any): ValidationResult {
+  L 460: export interface FullFormValidationError {
+  L 471: export function validateFullProducerData(data: {
+
+--- src\utils\googleSheetsIntegration.ts ---
+  L  29: export function getCachedRegistros(): HistoricalRecord[] {
+  L  40: function saveCachedRegistros(records: HistoricalRecord[]): void {
+  L  48: export function getLastSyncTime(): string | null {
+  L  56: export function recordToGoogle(record: HistoricalRecord): GoogleRegistro {
+  L 103: export function googleToRecord(g: GoogleRegistro): HistoricalRecord {
+  L 179: export async function guardarRegistroCompleto(
+  L 208: const yaSubida = (url: string | undefined | null): boolean => {
+  L 260: const urlExistente = (record as any).fotoTitularDriveUrl;
+  L 271: const urlExistente = (record as any).firmaDriveUrl;
+  L 342: export async function sincronizarDesdeSheets(): Promise<{
+  L 391: export async function inicializarSincronizacion(): Promise<{
+
+--- src\utils\guilloche.ts ---
+  L   7: export function generateGuillocheRosettePath(
+  L  24: const k = (R - r) / r;
+  L  38: export function generateGuillocheWavePath(
+  L  50: const phaseShift = (i / lines) * Math.PI * 2;
+  L  54: const theta = (x / width) * Math.PI * 2 * frequency + phaseShift;
+  L  64: export function drawGuillocheBorderOnCanvas(
+
+--- src\utils\historicalDocumentOcr.ts ---
+  L   7: export interface HistoricalSampleRecord {
+  L  21: export function getHistoricalFieldCompatibility(year: number = 1990) {
+  L  61: export function parseHistoricalDocumentText(
+  L  66: const upper = (rawText || '').toUpperCase();
+
+--- src\utils\ineOcrUtils.ts ---
+  L   6: export interface IneParsedData {
+  L  50: export function cleanIneName(rawNameText: string): {
+  L 111: export function computeExpectedInitials(
+  L 116: const p = (firstLastName || '').trim().toUpperCase();
+  L 117: const m = (secondLastName || '').trim().toUpperCase();
+  L 118: const n = (names || '').trim().toUpperCase();
+  L 150: export function crossValidateCurp(
+  L 164: const cleanCurp = (curp || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  L 235: export function crossValidateRfc(
+  L 248: const cleanRfc = (rfc || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  L 291: function beautifyAddress(raw: string): string {
+  L 347: export function cleanIneAddress(
+  L 396: export function calculateRealConfidenceScore(params: {
+  L 481: export function parseIneTextWithCrossValidation(
+
+--- src\utils\localFierrosStorage.ts ---
+  L  10: export function compressImageForStorage(
+  L  81: export function normalizeExpedienteRecord(item: HistoricalRecord): HistoricalRecord {
+  L 143: export function getLocalFierros(): HistoricalRecord[] {
+  L 162: export function saveLocalFierro(
+  L 263: export function findExpedienteInLocalStorage(
+  L 271: const targetIdRegistro = (
+  L 281: const itemRegId = (item.id_registro || item.registrationNumber || item.id || '').trim();
+  L 290: const matchedId = (exactLocal.id_registro || exactLocal.registrationNumber || exactLocal.id || '').trim();
+  L 308: const itemRegId = (item.id_registro || item.registrationNumber || item.id || '').trim();
+  L 351: export interface VectorComparisonResult {
+  L 366: export function runVectorSimilarityAnalysis(
+
+--- src\utils\numberingConfig.ts ---
+  L   7: export interface SeriesNumberingConfig {
+  L  29: export function getStoredSeriesConfig(): SeriesNumberingConfig {
+  L  49: export function saveStoredSeriesConfig(config: SeriesNumberingConfig): void {
+  L  61: export function formatFolioString(prefix: string, num: number, padding: number): string {
+  L  62: const cleanPrefix = (prefix || '').toUpperCase();
+  L  72: export function formatRegistrationString(prefix: string, num: number, padding: number): string {
+  L  73: const cleanPrefix = (prefix || '').toUpperCase();
+  L  82: export function incrementSeriesNumbers(): SeriesNumberingConfig {
+
+--- src\utils\pdfGenerator.ts ---
+  L   5: export interface GeneratePdfOptions {
+  L  18: export interface PdfGenerationResult {
+  L  32: export function generateDocumentSecurityHash(producerData: ProducerData, issueDate: string): string {
+  L  43: const h1 = (hash1 >>> 0).toString(16).padStart(8, '0').toUpperCase();
+  L  44: const h2 = (hash2 >>> 0).toString(16).padStart(8, '0').toUpperCase();
+  L  45: const h3 = ((hash1 ^ hash2) >>> 0).toString(16).padStart(8, '0').toUpperCase();
+  L  52: async function captureElementToCanvas(element: HTMLElement): Promise<HTMLCanvasElement> {
+  L  77: export async function generateSecureCertificatePdf(
+  L  91: const cleanName = (producerData.fullName || 'PRODUCTOR')
+  L  94: const folioStr = (producerData.folio || 'PAN-2026-00000').replace(/[^a-zA-Z0-9-]/g, '_');
+
+--- src\utils\pdfOrdenCobro.ts ---
+  L  20: interface PdfOrdenResult {
+  L  30: function formatDateSpanish(dateStr?: string): string {
+  L  52: export function generarPdfOrdenCobro(
+
+--- src\utils\preferences.ts ---
+  L  15: export function getReciboFotoEnabled(): boolean {
+  L  28: export function setReciboFotoEnabled(enabled: boolean): void {
+  L  44: export function clearAllPreferences(): void {
+
+--- src\utils\reportsData.ts ---
+  L 264: export function getMunicipalActivities(): MunicipalSupportActivity[] {
+  L 282: export function saveMunicipalActivity(activity: MunicipalSupportActivity): MunicipalSupportActivity[] {
+  L 293: export function resetActivitiesToDefault(): MunicipalSupportActivity[] {
+
+--- src\utils\similarity.ts ---
+  L   4: export function calculateSimilarity(current: BrandConfig, historical: HistoricalRecord): {
+  L  11: const currInitials = (current.initials || '').toUpperCase().trim();
+  L  12: const histInitials = (historical.initials || '').toUpperCase().trim();
+  L 105: export function formatSymbolName(symbol: TraditionalSymbol): string {
+  L 123: export function formatOrientationName(orientation: BrandOrientation): string {
+  L 134: export interface AntiDuplicityAnalysis {
+  L 144: export function runAntiDuplicityCheck(current: BrandConfig): AntiDuplicityAnalysis {
+  L 192: export function generateUniqueProposals(current: BrandConfig): BrandConfig[] {
+  L 194: const baseInitials = (current.initials || 'P').toUpperCase().trim();
+
+--- src\App.tsx ---
+  L  75: export default function App() {
+  L 157: const handleApplyInitialsToBrand = (initials: string) => {
+  L 165: const handleLoadRecordIntoCertificate = (record: HistoricalRecord) => {
+  L 260: const handleGenerateUnique = () => {
+  L 273: const handleQuickPrint = () => {
+  L 294: const handleSelectTab = (tab: AppTab) => {
+  L 307: const handleSelectProcedureCategory = (
+
+--- server.ts ---
+  L  17: async function startServer() {
+
+--- vite.config.ts ---
+  L   6: export default defineConfig(() => {
+
+======================================================================
+4. ENDPOINTS Y LLAMADAS API
+======================================================================
+
+--- api\app.ts ---
+  L  25: const response = await fetch(paddleUrl, {
+  L  90: const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  L 154: const response = await fetch(ollamaUrl + '/api/generate', {
+  L 216: app.post('/api/ai/assistant', async (req, res) => {
+  L 322: app.post('/api/ai/scan-ine', async (req, res) => {
+  L 576: const paddleResponse = await fetch(paddleUrl, {
+  L 842: app.post('/api/ai/scan-historical', async (req, res) => {
+  L1097: app.post('/api/ai/vectorize-fierro', async (req, res) => {
+  L1565: app.post('/api/biometrics/register-challenge', (req, res) => {
+  L1596: app.post('/api/biometrics/register-verify', (req, res) => {
+  L1615: app.post('/api/biometrics/login-challenge', (req, res) => {
+  L1639: app.post('/api/biometrics/login-verify', (req, res) => {
+  L1664: app.get('/api/biometrics/credentials/:userId', (req, res) => {
+  L1671: app.delete('/api/biometrics/credentials/:userId/:credentialId', (req, res) => {
+  L1684: app.post('/api/biometrics/verify-pin-fallback', (req, res) => {
+  L1704: app.get(['/health', '/api/health', '/_healthz'], (_req, res) => {
+
+--- server\app.ts ---
+  L  25: const response = await fetch(paddleUrl, {
+  L  86: app.post('/api/ai/assistant', async (req, res) => {
+  L 188: app.post('/api/ai/scan-ine', async (req, res) => {
+  L 628: app.post('/api/ai/scan-historical', async (req, res) => {
+  L 877: app.post('/api/ai/vectorize-fierro', async (req, res) => {
+  L1345: app.post('/api/biometrics/register-challenge', (req, res) => {
+  L1376: app.post('/api/biometrics/register-verify', (req, res) => {
+  L1395: app.post('/api/biometrics/login-challenge', (req, res) => {
+  L1419: app.post('/api/biometrics/login-verify', (req, res) => {
+  L1444: app.get('/api/biometrics/credentials/:userId', (req, res) => {
+  L1451: app.delete('/api/biometrics/credentials/:userId/:credentialId', (req, res) => {
+  L1464: app.post('/api/biometrics/verify-pin-fallback', (req, res) => {
+  L1484: app.get(['/health', '/api/health', '/_healthz'], (_req, res) => {
+
+--- src\components\FloatingAIAssistant.tsx ---
+  L 232: const response = await fetch('/api/ai/assistant', {
+
+--- src\components\IneScanner.tsx ---
+  L 377: const response = await fetch('/api/ai/scan-ine', {
+
+--- src\components\TabDigitalizacionHistorica.tsx ---
+  L 319: const response = await fetch('/api/ai/scan-historical', {
+  L 809: const resp = await fetch('/api/ai/vectorize-fierro', {
+
+--- src\services\biometricsService.ts ---
+  L 145: export function getStoredBiometricCredentials(userId?: string): BiometricCredential[] {
+  L 174: export function getLockoutState(userId: string): LockoutState {
+  L 336: await fetch('/api/biometrics/register-verify', {
+  L 560: await fetch(`/api/biometrics/credentials/${userId}/${credentialId}`, {
+
+--- src\services\cloudinaryService.ts ---
+  L  37: const res = await fetch(endpoint, { method: 'POST', body: formData });
+
+--- src\services\financeCatalogService.ts ---
+  L 277: export function getLocalConcepts(): ConceptoFinanciero[] {
+  L 299: export function getLocalPriceHistory(): HistorialPrecio[] {
+  L 321: export function getLocalFinanceConfig(): ConfigFinanzas {
+  L 349: export async function getFinanceConcepts(filter?: {
+  L 405: export async function getFinanceConceptById(idOrCode: string): Promise<ConceptoFinanciero | null> {
+  L 580: export function getConceptPriceHistory(conceptoId: string): HistorialPrecio[] {
+  L 591: export function getFinanceGeneralConfig(): ConfigFinanzas {
+
+--- src\services\financeFirestore.ts ---
+  L  69: const response = await fetch(GOOGLE_API_URL + '?action=guardarPago', {
+  L 113: const response = await fetch(url, { method: 'GET' });
+  L 162: const response = await fetch(GOOGLE_API_URL + '?action=actualizarPagoEstatus', {
+  L 182: const response = await fetch(GOOGLE_API_URL + '?action=eliminarPago', {
+  L 259: export async function getPaymentOrders(): Promise<PaymentOrder[]> {
+  L 379: export async function deletePaymentOrder(orderId: string): Promise<void> {
+  L 409: export async function getPagosByFolioFierro(folioFierro: string): Promise<PaymentOrder[]> {
+
+--- src\services\googleSheetsService.ts ---
+  L 170: export function getQueueCount(): number {
+  L 245: const response = await fetch(fullUrl, options);
+
+--- src\utils\auditAuth.ts ---
+  L 127: export function getMunicipalUsers(): MunicipalUser[] {
+  L 140: export function getCurrentUser(): MunicipalUser {
+  L 190: export function getAuditLogs(): AuditLogEntry[] {
+
+--- src\utils\canvasRenderer.ts ---
+  L 387: export function getBrandDataUrl(config: BrandConfig, size = 1024): string {
+
+--- src\utils\catalogs.ts ---
+  L  28: export function getStoredEjidos(): string[] {
+  L  66: export function getStoredMunicipios(): string[] {
+
+--- src\utils\database.ts ---
+  L  62: export function getMunicipalDatabase(): HistoricalRecord[] {
+
+--- src\utils\draftHistory.ts ---
+  L 196: export function getSavedDraftVersions(): RegistrationDraftVersion[] {
+  L 316: export function getInterruptedSessionDraft(): {
+  L 361: export function deleteDraftVersion(id: string): RegistrationDraftVersion[] {
+  L 388: export function getDraftStorageStats(): {
+
+--- src\utils\googleSheetsIntegration.ts ---
+  L  29: export function getCachedRegistros(): HistoricalRecord[] {
+  L  48: export function getLastSyncTime(): string | null {
+
+--- src\utils\historicalDocumentOcr.ts ---
+  L  21: export function getHistoricalFieldCompatibility(year: number = 1990) {
+
+--- src\utils\localFierrosStorage.ts ---
+  L 143: export function getLocalFierros(): HistoricalRecord[] {
+
+--- src\utils\numberingConfig.ts ---
+  L  29: export function getStoredSeriesConfig(): SeriesNumberingConfig {
+
+--- src\utils\preferences.ts ---
+  L  15: export function getReciboFotoEnabled(): boolean {
+
+--- src\utils\reportsData.ts ---
+  L 264: export function getMunicipalActivities(): MunicipalSupportActivity[] {
+
+--- server.ts ---
+  L  45: app.get('*', (req, res) => {
+
+======================================================================
+5. FUNCIONES EN SCRIPTS POWERSHELL
+======================================================================
+
+--- extraer-info.ps1 ---
+  L   7: function Write-Seccion {
+
+--- fix-antiduplicidad.ps1 ---
+  L  20: function normalizeName(name: string): string {
