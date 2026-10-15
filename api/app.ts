@@ -16,6 +16,10 @@ import {
 
 dotenv.config();
 
+// Entorno serverless de Vercel: los motores que dependen de recursos locales
+// (PaddleOCR en LAN, Tesseract WASM) no funcionan en la nube.
+const IS_VERCEL = Boolean(process.env.VERCEL);
+
 // =========================================================================
 // FUNCIÓN AUXILIAR: Llamar al microservicio PaddleOCR (teclingo-server)
 // =========================================================================
@@ -73,6 +77,10 @@ async function callGroqVision(imageBase64: string, prompt: string): Promise<any 
   const groqKey = process.env.GROQ_API_KEY;
   if (!groqKey) {
     console.warn('[Groq] GROQ_API_KEY no configurada');
+    return null;
+  }
+  if (IS_VERCEL) {
+    console.warn('[Groq] Omitido en Vercel: el modelo llama-4-scout ya no está disponible en Groq');
     return null;
   }
 
@@ -276,7 +284,7 @@ export function createApp(): Express {
       if (ai) {
         // Prepare prompt contents
         const fullPrompt = `${contextPrompt}\nPregunta o instrucción del usuario: ${message}`;
-        const candidateModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+        const candidateModels = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
 
         for (const model of candidateModels) {
           try {
@@ -654,7 +662,7 @@ Si es legible, devuelve exactamente este JSON:
 }
 Devuelve EXCLUSIVAMENTE el JSON válido.`;
 
-      const candidateModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+      const candidateModels = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
 
       for (const model of candidateModels) {
         try {
@@ -788,6 +796,14 @@ Devuelve EXCLUSIVAMENTE el JSON válido.`;
     // ─────────────────────────────────────────────────────────────
     // MOTOR 3: Tesseract.js (fallback local)
     // ─────────────────────────────────────────────────────────────
+    if (IS_VERCEL) {
+      console.log('[OCR-Cascade] Motor 3: omitido en Vercel (Tesseract WASM no disponible en serverless)');
+      return res.json({
+        success: false,
+        error: 'El servicio de lectura no está disponible en este momento (saturación temporal). Intente de nuevo en unos segundos.',
+      });
+    }
+
     console.log('[OCR-Cascade] Motor 3: Intentando Tesseract.js');
 
     if (!Tesseract) {
@@ -936,7 +952,7 @@ Responde ÚNICAMENTE en JSON con la siguiente estructura:
 
       // 1. Multimodal Gemini Processing
       if (ai) {
-        const candidateModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+        const candidateModels = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
 
         for (const model of candidateModels) {
           try {
@@ -1054,6 +1070,8 @@ Responde ÚNICAMENTE en JSON con la siguiente estructura:
           if (paddleResult && paddleResult.full_text) {
             extractedText = paddleResult.full_text;
             console.log('OK: PaddleOCR leyo el documento historico correctamente');
+          } else if (IS_VERCEL) {
+            throw new Error('Tesseract omitido en Vercel (WASM no disponible en serverless)');
           } else {
             const imageBuffer = Buffer.from(cleanBase64, 'base64');
             if (!Tesseract) {
