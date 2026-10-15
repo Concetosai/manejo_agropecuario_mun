@@ -12,6 +12,7 @@ import { generateSecureCertificatePdf } from '../utils/pdfGenerator';
 import { subirImagenACloudinary } from '../services/cloudinaryService';
 import { actualizarUrlCertificadoImagen } from '../services/googleSheetsService';
 import html2canvas from 'html2canvas-pro';
+import { captureElementSafe } from '../utils/captureSafe';
 import { DocumentDispatchSection } from './DocumentDispatchSection';
 import { FichaRegistroTradicional } from './FichaRegistroTradicional';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
@@ -233,14 +234,17 @@ export const TabCertificado: React.FC<TabCertificadoProps> = ({
           throw new Error('No se encontro .print-page-letter en el DOM');
         }
 
-        console.log('%c[IMG-AUTO] Capturando con html2canvas-pro...', 'color: #0ea5e9');
-        const canvas = await html2canvas(certElement, {
-          scale: 2,
-          backgroundColor: '#faf7ef',
-          useCORS: true,
-          logging: false,
-          allowTaint: false,
-        });
+                console.log('[CERT-DIAG] fonts:', document.fonts?.status);
+        console.log('[CERT-DIAG] dpr:', window.devicePixelRatio);
+        console.log('[CERT-DIAG] svg count:', document.querySelectorAll('svg').length);
+        console.log('[CERT-DIAG] imgs:', [...document.querySelectorAll('img')].map(i => ({
+          src: i.src.slice(0, 60),
+          complete: i.complete,
+          w: i.naturalWidth,
+        })));
+
+        console.log('%c[IMG-AUTO] Capturando con captureElementSafe...', 'color: #0ea5e9');
+        const canvas = await captureElementSafe(certElement, { backgroundColor: '#faf7ef' });
 
         const jpgBase64 = canvas.toDataURL('image/jpeg', 0.85);
         console.log('%c[IMG-AUTO] JPG generado:', 'color: #22c55e', {
