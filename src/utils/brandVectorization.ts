@@ -676,7 +676,7 @@ export class FierroVectorizer {
   normalizeContrast: boolean;
 
   constructor() {
-    this.dimensions = 64;
+    this.dimensions = 256; // FASE_256D: migrado de 64 a 256 dimensiones (grid 16x16)
     this.threshold = 0.15; // Umbral calibrado de activación (reducido de 0.3 a 0.15)
     this.normalizeContrast = true;
   }
@@ -717,25 +717,58 @@ export class FierroVectorizer {
           // 3. Convertir a escala de grises
           const grayData = this.toGrayscale(imageData);
 
-          // 4. Estimar fondo de papel blanco a partir de píxeles claros de alta reflectancia
-          let paperLuminanceSum = 0;
-          let paperSampleCount = 0;
-          for (let p = 0; p < 256 * 256; p += 8) {
-            if (grayData[p] > 0.60) {
-              paperLuminanceSum += grayData[p];
-              paperSampleCount++;
+          // Región real de la foto dentro del lienzo de 256x256 (excluye el padding blanco sintético).
+          // El padding NO debe participar en la estimación del blanco de papel: si se incluye, el borde
+          // blanco eleva paperWhiteBase a ~1.0 y toda la foto se clasifica como "tinta" (falso positivo 100%).
+          const imgW = Math.max(1, Math.round(img.width * scale));
+          const imgH = Math.max(1, Math.round(img.height * scale));
+          const rx0 = Math.max(0, Math.floor(x));
+          const ry0 = Math.max(0, Math.floor(y));
+          const rx1 = Math.min(256, Math.ceil(x + imgW));
+          const ry1 = Math.min(256, Math.ceil(y + imgH));
+
+          // 4. Estimar el blanco de papel SOLO con los píxeles de la foto, usando un percentil alto
+          //    (robusto a sombras, iluminación desigual y fondos grisáceos de fotos reales).
+          const luminanceHistogram = new Uint32Array(256);
+          let regionSampleCount = 0;
+          for (let py = ry0; py < ry1; py++) {
+            for (let px = rx0; px < rx1; px++) {
+              const g = grayData[py * 256 + px];
+              const bin = Math.min(255, Math.max(0, Math.round(g * 255)));
+              luminanceHistogram[bin]++;
+              regionSampleCount++;
             }
           }
-          const paperWhiteBase = paperSampleCount > 0 ? paperLuminanceSum / paperSampleCount : 0.90;
+          let paperWhiteBase = 0.90;
+          if (regionSampleCount > 0) {
+            const target = regionSampleCount * 0.90;
+            let cumulative = 0;
+            for (let i = 0; i < 256; i++) {
+              cumulative += luminanceHistogram[i];
+              if (cumulative >= target) {
+                paperWhiteBase = i / 255;
+                break;
+              }
+            }
+          }
+          paperWhiteBase = Math.max(0.30, paperWhiteBase);
 
           // 5. Normalización de contraste: el fondo blanco del papel se trata como ruido cero (0.00)
           const inkData = new Float32Array(256 * 256);
-          for (let p = 0; p < 256 * 256; p++) {
-            const diffFromPaper = paperWhiteBase - grayData[p];
-            if (diffFromPaper > 0.10) {
-              inkData[p] = Math.min(1.0, Math.max(0, diffFromPaper / Math.max(0.25, paperWhiteBase - 0.12)));
-            } else {
-              inkData[p] = 0.0;
+          for (let py = 0; py < 256; py++) {
+            for (let px = 0; px < 256; px++) {
+              const p = py * 256 + px;
+              // El padding sintético nunca es tinta de fierro
+              if (px < rx0 || px >= rx1 || py < ry0 || py >= ry1) {
+                inkData[p] = 0.0;
+                continue;
+              }
+              const diffFromPaper = paperWhiteBase - grayData[p];
+              if (diffFromPaper > 0.10) {
+                inkData[p] = Math.min(1.0, Math.max(0, diffFromPaper / Math.max(0.25, paperWhiteBase - 0.12)));
+              } else {
+                inkData[p] = 0.0;
+              }
             }
           }
 
@@ -753,14 +786,16 @@ export class FierroVectorizer {
           let maxY = 0;
 
           for (let p = 0; p < 256 * 256; p++) {
+            const py = Math.floor(p / 256);
+            const px = p % 256;
+            const outsideRegion = px < rx0 || px >= rx1 || py < ry0 || py >= ry1;
             const ink = inkData[p];
-            const edge = dilatedEdges[p];
+            // El borde entre la foto y el padding blanco genera falsos bordes Sobel: se descartan
+            const edge = outsideRegion ? 0 : dilatedEdges[p];
             const combined = Math.max(edge, ink);
             strokeMap[p] = combined;
 
             if (combined > 0.35) {
-              const py = Math.floor(p / 256);
-              const px = p % 256;
               if (px < minX) minX = px;
               if (px > maxX) maxX = px;
               if (py < minY) minY = py;
@@ -768,8 +803,8 @@ export class FierroVectorizer {
             }
           }
 
-          // 9. Dividir en grid 8x8 (64 celdas)
-          const gridSize = 8;
+          // 9. FASE_256D: Dividir en grid 16x16 (256 celdas)
+          const gridSize = 16;
           const cellSize = 256 / gridSize;
           const rawEmbedding: number[] = [];
 
@@ -1022,7 +1057,7 @@ export class FierroVectorizer {
    * Excluye estrictamente las celdas de fondo blanco (< 0.35) para que no inflen
    * artificialmente la simetría a valores irreales (ej. una "G" asimétrica debe arrojar 40-55%).
    */
-  calculateHorizontalSymmetry(embedding: number[], gridSize = 8): number {
+  calculateHorizontalSymmetry(embedding: number[], gridSize = 16): number {
     let matchedMass = 0;
     let totalMass = 0;
     const halfSize = Math.floor(gridSize / 2);
@@ -1052,7 +1087,7 @@ export class FierroVectorizer {
    * Calcula simetría vertical basada en la distribución real de trazos.
    * Compara el tercio superior con el inferior ignorando el fondo vacío.
    */
-  calculateVerticalSymmetry(embedding: number[], gridSize = 8): number {
+  calculateVerticalSymmetry(embedding: number[], gridSize = 16): number {
     let matchedMass = 0;
     let totalMass = 0;
     const halfSize = Math.floor(gridSize / 2);
@@ -1102,3 +1137,448 @@ export class FierroVectorizer {
   }
 }
 
+
+// =========================================================================
+// FASE_1_PREPROCESAMIENTO: Auto-rotación + Detección de Inversión
+// =========================================================================
+// Estas funciones normalizan fotos de fierros físicos ANTES de vectorizarlos,
+// para mejorar la similitud cross-modo (foto ↔ canvas).
+//
+// Funciones:
+//   1. detectInversion()      → detecta si la imagen es negativo
+//   2. autoRotateImage()      → endereza la imagen al ángulo de máxima simetría
+//   3. preprocessFierroImage()→ orquesta ambas + retorna metadatos
+// =========================================================================
+
+/**
+ * Analiza los 4 bordes de la imagen y detecta si está en negativo.
+ * Una imagen en negativo tiene fondo oscuro y trazos claros.
+ */
+export async function detectInversion(imageSrc: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) {
+          resolve(false);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, 128, 128);
+        const data = ctx.getImageData(0, 0, 128, 128).data;
+
+        let perimeterSum = 0;
+        let perimeterCount = 0;
+
+        for (let y = 0; y < 128; y++) {
+          for (let x = 0; x < 128; x++) {
+            const isPerimeter = x < 4 || x >= 124 || y < 4 || y >= 124;
+            if (!isPerimeter) continue;
+            const idx = (y * 128 + x) * 4;
+            const lum =
+              (0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2]) /
+              255;
+            perimeterSum += lum;
+            perimeterCount++;
+          }
+        }
+
+        const avgPerimeterLum = perimeterCount > 0 ? perimeterSum / perimeterCount : 0.9;
+        const isInverted = avgPerimeterLum < 0.40;
+        console.log(
+          '%c[Preprocess] Detección de inversión:',
+          'color: #0ea5e9',
+          {
+            avgPerimeterLum: avgPerimeterLum.toFixed(3),
+            isInverted,
+          }
+        );
+        resolve(isInverted);
+      } catch (err) {
+        console.warn('[Preprocess] Error detectando inversión:', err);
+        resolve(false);
+      }
+    };
+    img.onerror = () => resolve(false);
+    img.src = imageSrc;
+  });
+}
+
+/**
+ * Endereza una imagen del fierro probando múltiples ángulos de rotación
+ * y eligiendo el que maximiza la simetría H+V del vector.
+ */
+/**
+ * FIX_ROTACION_V2_RECTANGULARITY: mide la calidad de una orientacion
+ * usando el ajuste del bounding box del contenido, no la simetria.
+ *
+ * Algoritmo:
+ *   1. Encontrar el bounding box (min/max fila/col con valores > 0.3)
+ *   2. Calcular contentDensity = celdas_activas / area_bbox
+ *   3. Calcular rectScore = 1 - (area_bbox / 64)  [penaliza bbox grandes]
+ *   4. Score combinado = contentDensity * 0.6 + rectScore * 0.4
+ *
+ * Un fierro recto tiene bbox tight + contenido concentrado -> score alto.
+ * Un fierro rotado tiene bbox grande + contenido disperso -> score bajo.
+ */
+function computeRectangularityScore(embedding: number[]): {
+  score: number;
+  bboxArea: number;
+  contentDensity: number;
+  rectScore: number;
+  bbox: { minRow: number; maxRow: number; minCol: number; maxCol: number };
+} {
+  const THRESHOLD = 0.3;
+  const gridSize = 8;
+
+  let minRow = gridSize, maxRow = -1, minCol = gridSize, maxCol = -1;
+  let activeCells = 0;
+
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const val = embedding[row * gridSize + col];
+      if (val > THRESHOLD) {
+        activeCells++;
+        if (row < minRow) minRow = row;
+        if (row > maxRow) maxRow = row;
+        if (col < minCol) minCol = col;
+        if (col > maxCol) maxCol = col;
+      }
+    }
+  }
+
+  if (activeCells === 0 || maxRow < 0) {
+    return {
+      score: 0,
+      bboxArea: 64,
+      contentDensity: 0,
+      rectScore: 0,
+      bbox: { minRow: 0, maxRow: 7, minCol: 0, maxCol: 7 },
+    };
+  }
+
+  const bboxWidth = maxCol - minCol + 1;
+  const bboxHeight = maxRow - minRow + 1;
+  const bboxArea = bboxWidth * bboxHeight;
+
+  const contentDensity = activeCells / bboxArea;
+  const rectScore = 1 - (bboxArea / 64);
+  const score = contentDensity * 0.6 + rectScore * 0.4;
+
+  return {
+    score,
+    bboxArea,
+    contentDensity,
+    rectScore,
+    bbox: { minRow, maxRow, minCol, maxCol },
+  };
+}
+
+/**
+ * FIX_ROTACION_V2_RECTANGULARITY: endereza una imagen del fierro probando
+ * multiples angulos y eligiendo el que maximiza el ajuste del bounding box.
+ * Funciona correctamente para fierros asimetricos.
+ */
+/**
+ * FIX_ROTACION_V3: tres mejoras sobre V2:
+ *   1. angleBonus: penaliza angulos lejanos a 0 (regularizacion)
+ *   2. Filtro bbox: solo rota si el rectScore MEJORA respecto a 0deg
+ *   3. Umbral 0.60: no aplica cambios marginales
+ *
+ * Ademas:
+ *   - Determinismo: redondea los scores a 2 decimales para reducir ruido
+ *   - Empatia a 0deg: si best.angle != 0 y su score no supera a 0deg en >=5%, no rota
+ */
+export async function autoRotateImage(
+  imageSrc: string,
+  options: { step?: number; range?: number; minConfidence?: number } = {}
+): Promise<{ dataUrl: string; angle: number; confidence: number }> {
+  const { step = 3, range = 15, minConfidence = 0.60 } = options;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = async () => {
+      try {
+        const angles: number[] = [];
+        for (let a = -range; a <= range; a += step) {
+          angles.push(a);
+        }
+
+        const vectorizer = new FierroVectorizer();
+        const results: Array<{
+          angle: number;
+          rawScore: number;
+          adjustedScore: number;
+          contentDensity: number;
+          bboxArea: number;
+          rectScore: number;
+          dataUrl: string;
+        }> = [];
+
+        console.log(
+          '%c[Preprocess] Auto-rotacion V3 (rectangularity + angleBonus): probando',
+          'color: #0ea5e9; font-weight: bold',
+          angles.length,
+          'angulos'
+        );
+
+        for (const angle of angles) {
+          const rotatedDataUrl = rotateImageOnCanvas(img, angle);
+          try {
+            const embedding = await vectorizer.generateEmbedding(rotatedDataUrl);
+            const rectAnalysis = computeRectangularityScore(embedding.embedding);
+
+            // Redondear a 4 decimales para reducir ruido
+            const rawScore = Math.round(rectAnalysis.score * 10000) / 10000;
+
+            // FIX_ROTACION_V3: angleBonus penaliza angulos lejanos a 0
+            // 0deg = 1.00, 15deg = 0.85
+            const angleBonus = 1 - (Math.abs(angle) / range) * 0.15;
+            const adjustedScore = Math.round(rawScore * angleBonus * 10000) / 10000;
+
+            results.push({
+              angle,
+              rawScore,
+              adjustedScore,
+              contentDensity: rectAnalysis.contentDensity,
+              bboxArea: rectAnalysis.bboxArea,
+              rectScore: rectAnalysis.rectScore,
+              dataUrl: rotatedDataUrl,
+            });
+
+            console.log(
+              `  . ${angle}deg: raw=${(rawScore * 100).toFixed(1)}% ` +
+                `adjusted=${(adjustedScore * 100).toFixed(1)}% ` +
+                `(density=${(rectAnalysis.contentDensity * 100).toFixed(1)}%, ` +
+                `bbox=${rectAnalysis.bboxArea}, ` +
+                `rectScore=${(rectAnalysis.rectScore * 100).toFixed(1)}%)`
+            );
+          } catch (err) {
+            console.warn(`  . ${angle}deg: error vectorizando`, err);
+          }
+        }
+
+        if (results.length === 0) {
+          resolve({ dataUrl: imageSrc, angle: 0, confidence: 0 });
+          return;
+        }
+
+        // Ordenar por adjustedScore descendente
+        results.sort((a, b) => b.adjustedScore - a.adjustedScore);
+        const best = results[0];
+        const bestScore = best.adjustedScore;
+
+        // FIX_ROTACION_V3: encontrar el score de 0deg para comparar
+        const zeroDegResult = results.find((r) => r.angle === 0);
+        const zeroScore = zeroDegResult ? zeroDegResult.adjustedScore : 0;
+
+        const avgScore =
+          results.reduce((s, r) => s + r.adjustedScore, 0) / results.length;
+        const confidence = Math.min(
+          1,
+          Math.max(0, (bestScore - avgScore) / 0.20)
+        );
+
+        console.log(
+          '%c[Preprocess] Analisis V3:',
+          'color: #22c55e; font-weight: bold',
+          {
+            bestAngle: best.angle + 'deg',
+            bestScore: (bestScore * 100).toFixed(1) + '%',
+            zeroAngleScore: (zeroScore * 100).toFixed(1) + '%',
+            avgScore: (avgScore * 100).toFixed(1) + '%',
+            confidence: (confidence * 100).toFixed(0) + '%',
+            bboxRectScore: (best.rectScore * 100).toFixed(1) + '%',
+          }
+        );
+
+        // ────────────────────────────────────────────────────────────
+        // REGLAS DE DECISION V3
+        // ────────────────────────────────────────────────────────────
+        // Regla 1: Si el ganador es 0deg → no rotar (logico)
+        if (best.angle === 0) {
+          console.log(
+            '%c[Preprocess] 0deg es el ganador, sin rotacion necesaria',
+            'color: #22c55e; font-weight: bold'
+          );
+          resolve({ dataUrl: imageSrc, angle: 0, confidence });
+          return;
+        }
+
+        // Regla 2: Si el angulo ganador no mejora el score de 0deg en >=5%, no rotar
+        const improvement = bestScore - zeroScore;
+        const MIN_IMPROVEMENT = 0.05; // 5%
+
+        if (improvement < MIN_IMPROVEMENT) {
+          console.log(
+            `%c[Preprocess] El angulo ${best.angle}deg solo mejora ${(improvement * 100).toFixed(1)}% vs 0deg (min 5%), manteniendo original`,
+            'color: #eab308; font-weight: bold'
+          );
+          resolve({ dataUrl: imageSrc, angle: 0, confidence });
+          return;
+        }
+
+        // Regla 3: Confianza debe superar el umbral (0.60)
+        if (confidence < minConfidence) {
+          console.log(
+            `%c[Preprocess] Confianza ${(confidence * 100).toFixed(0)}% < ${(minConfidence * 100).toFixed(0)}%, manteniendo original`,
+            'color: #eab308'
+          );
+          resolve({ dataUrl: imageSrc, angle: 0, confidence });
+          return;
+        }
+
+        // Todo OK: aplicar rotacion
+        console.log(
+          '%c[Preprocess] Aplicando rotacion de ' + best.angle + 'deg',
+          'color: #22c55e; font-weight: bold'
+        );
+        resolve({
+          dataUrl: best.dataUrl,
+          angle: best.angle,
+          confidence,
+        });
+      } catch (err) {
+        console.warn('[Preprocess] Error en auto-rotacion:', err);
+        resolve({ dataUrl: imageSrc, angle: 0, confidence: 0 });
+      }
+    };
+
+    img.onerror = () => resolve({ dataUrl: imageSrc, angle: 0, confidence: 0 });
+    img.src = imageSrc;
+  });
+}
+
+/**
+ * Rota una imagen en un canvas y devuelve el data URL resultante.
+ */
+function rotateImageOnCanvas(img: HTMLImageElement, angleDeg: number): string {
+  const rad = (angleDeg * Math.PI) / 180;
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+
+  const cos = Math.abs(Math.cos(rad));
+  const sin = Math.abs(Math.sin(rad));
+  const newW = Math.ceil(w * cos + h * sin);
+  const newH = Math.ceil(w * sin + h * cos);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = newW;
+  canvas.height = newH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, newW, newH);
+
+  ctx.translate(newW / 2, newH / 2);
+  ctx.rotate(rad);
+  ctx.drawImage(img, -w / 2, -h / 2, w, h);
+
+  return canvas.toDataURL('image/png');
+}
+
+/**
+ * Invierte una imagen (negativo → positivo).
+ */
+function invertImageOnCanvas(img: HTMLImageElement): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth || img.width;
+  canvas.height = img.naturalHeight || img.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return '';
+
+  ctx.drawImage(img, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = 255 - data[i];
+    data[i + 1] = 255 - data[i + 1];
+    data[i + 2] = 255 - data[i + 2];
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return canvas.toDataURL('image/png');
+}
+
+/**
+ * Orquestador: preprocesa una imagen de fierro físico.
+ * Pipeline:
+ *   1. Detectar inversión → si es negativo, invertir
+ *   2. Auto-rotar → probar ángulos y elegir el de máxima simetría
+ *   3. Retornar imagen lista para vectorizar
+ */
+export async function preprocessFierroImage(
+  imageSrc: string,
+  options: { enableAutoRotation?: boolean } = {}
+): Promise<{
+  dataUrl: string;
+  wasInverted: boolean;
+  rotationAngle: number;
+  rotationConfidence: number;
+}> {
+  const { enableAutoRotation = false } = options;
+  const startTime = performance.now();
+
+  console.log(
+    '%c[Preprocess] Iniciando preprocesamiento...',
+    'color: #0ea5e9; font-weight: bold'
+  );
+
+  const isInverted = await detectInversion(imageSrc);
+  let workingImage = imageSrc;
+  let wasInverted = false;
+
+  if (isInverted) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    await new Promise<void>((resolve) => {
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+      img.src = imageSrc;
+    });
+    workingImage = invertImageOnCanvas(img);
+    wasInverted = true;
+    console.log('%c[Preprocess] Imagen invertida (negativo -> positivo)', 'color: #22c55e');
+  } else {
+    console.log('[Preprocess] Sin inversión necesaria');
+  }
+
+  // FIX_PREPROCESS_TOGGLE_PARAM: respetar el flag enableAutoRotation
+  let rotation: { dataUrl: string; angle: number; confidence: number };
+  if (enableAutoRotation) {
+    console.log(
+      '%c[Preprocess] Auto-rotacion SOLICITADA por el operador (enableAutoRotation = true)',
+      'color: #f59e0b; font-weight: bold'
+    );
+    rotation = await autoRotateImage(workingImage);
+  } else {
+    console.log(
+      '%c[Preprocess] Auto-rotacion DESACTIVADA (default), manteniendo 0deg',
+      'color: #22c55e; font-weight: bold'
+    );
+    rotation = { dataUrl: workingImage, angle: 0, confidence: 0 };
+  }
+
+  const totalTime = Math.round(performance.now() - startTime);
+  console.log(
+    '%c[Preprocess] Completado en',
+    'color: #22c55e; font-weight: bold',
+    totalTime + 'ms'
+  );
+
+  return {
+    dataUrl: rotation.dataUrl,
+    wasInverted,
+    rotationAngle: rotation.angle,
+    rotationConfidence: rotation.confidence,
+  };
+}

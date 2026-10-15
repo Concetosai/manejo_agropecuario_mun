@@ -45,16 +45,18 @@ export function useDuplicateCheck(producerData: ProducerData, delayMs: number = 
         if (!registros || registros.length === 0) { setResult(EMPTY_RESULT); return; }
         const nombreNorm = normalizeName(nombre);
         for (const r of registros) {
-          if (curp && r.curp && r.curp.trim().toUpperCase() === curp) {
+          // FIX_STRING_TRIM: r.curp puede ser numero (Sheets auto-detecta tipos)
+          if (curp && r.curp && String(r.curp || '').trim().toUpperCase() === curp) {
             setResult({ found: true, folio: r.folio, matchField: 'curp', existingRecord: r, isChecking: false });
             return;
           }
-          if (ine && r.ine && r.ine.trim().toUpperCase() === ine) {
+          // FIX_STRING_TRIM: r.ine puede ser numero (Sheets auto-detecta tipos)
+          if (ine && r.ine && String(r.ine || '').trim().toUpperCase() === ine) {
             setResult({ found: true, folio: r.folio, matchField: 'ine', existingRecord: r, isChecking: false });
             return;
           }
           if (nombreNorm && nombreNorm.split(' ').length >= 2 && r.ownerName) {
-            if (normalizeName(r.ownerName) === nombreNorm) {
+            if (r.ownerName && normalizeName(String(r.ownerName)) === nombreNorm) {
               setResult({ found: true, folio: r.folio, matchField: 'nombre', existingRecord: r, isChecking: false });
               return;
             }

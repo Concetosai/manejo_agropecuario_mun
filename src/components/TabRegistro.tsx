@@ -3,8 +3,10 @@ import { ProducerData, PreloadedOrderData, BrandConfig } from '../types';
 import { TabCreador } from './TabCreador';
 import { recordAuditLog } from '../utils/auditAuth';
 import { guardarRegistroCompleto } from '../utils/googleSheetsIntegration';
+import { actualizarUrlsRecibo } from '../services/googleSheetsService';
 import { renderBrandToCanvas } from '../utils/canvasRenderer';
 import { subirImagenACloudinary } from '../services/cloudinaryService';
+import { generateSecureCertificatePdf } from '../utils/pdfGenerator';
 import { addNewMunicipalRecord } from '../utils/database';
 import {
   getStoredEjidos,
@@ -88,6 +90,7 @@ import {
   History,
   Save,
   Hash,
+  Loader2,
   FileCheck,
   FileSignature,
   Camera,
@@ -162,6 +165,13 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
   const [isCotejoApproved, setIsCotejoApproved] = useState<boolean>(false);
   const [isForjaModalOpen, setIsForjaModalOpen] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
+
+  // A1_SPINNER: estado para mostrar loader en el boton de guardado
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  // FIX_PDF_AUTO: estado para generar el PDF automáticamente
+  const [isGeneratingPdfAuto, setIsGeneratingPdfAuto] = useState<boolean>(false);
+  const [pdfAutoProgress, setPdfAutoProgress] = useState<string>('');
 
   const [isMonogramLinked, setIsMonogramLinked] = useState<boolean>(() => {
     try {
@@ -408,6 +418,12 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
   const handleSave = async (e?: React.FormEvent): Promise<boolean> => {
     if (e) e.preventDefault();
 
+    // A1_SPINNER_GUARD: activar loader y evitar doble click
+    if (isSaving) return false;
+    setIsSaving(true);
+
+    try {
+
     // VALIDACION_COMPLETA_HOJAS_1_4: recolectar TODOS los faltantes de Hojas 1-4
     const todosLosFaltantes: MissingField[] = [];
     for (let paso = 1; paso <= 4; paso++) {
@@ -578,17 +594,21 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
       setSeriesConfig(nextSeries);
     }
 
-    setSaveAlert('Registro municipal validado al 100% y asentado con exito en el padron pecuario oficial + Google Sheets.');
+        // PDF_AUTO_MOVIDO_A_CERTIFICADO: el PDF se genera al montar TabCertificado
+    // (TabCertificado.tsx tiene el useEffect FIX_IMG_AUTO que genera la imagen del certificado)
+    setSaveAlert('✅ Registro asentado. Redirigiendo al certificado...');
     setIsSaved(true);
-    setTimeout(() => setSaveAlert(null), 4500);
+    setTimeout(() => setSaveAlert(null), 3000);
 
-    // FASE_0_1: Redirigir automaticamente al certificado para imprimir
     if (onGoToCertificado) {
-      console.log('%c[Flujo] Registro guardado. Redirigiendo al certificado...', 'color: #22c55e; font-weight: bold');
+      console.log('%c[Flujo] Redirigiendo al certificado (imagen se generara alli)...', 'color: #22c55e; font-weight: bold');
       onGoToCertificado();
     }
 
     return true;
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleApplyIneData = async (ineData: IneScanResult) => {
@@ -2645,7 +2665,13 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
                     </span>
                     <div className="flex items-center gap-2.5 mt-1">
                       <div className="w-20 h-20 bg-white rounded-lg border border-amber-400/40 flex items-center justify-center shrink-0 overflow-hidden">
-                        {brandConfig && brandConfig.initials ? (
+                        {producerData.fierroDigitalizadoPhoto ? (
+                          <img
+                            src={producerData.fierroDigitalizadoPhoto}
+                            alt="Fierro digitalizado real"
+                            className="w-full h-full object-contain"
+                          />
+                        ) : brandConfig && brandConfig.initials ? (
                           <canvas
                             ref={hoja5FierroCanvasRef}
                             width={200}
@@ -2724,17 +2750,30 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
                   <span>{!fullValidation.isValid ? 'Revisar Datos para Certificar' : 'Ir a Certificado, Imprimir y Enviar'}</span>
                 </button>
 
+                {/* A1_SPINNER_BTN: boton con loader */}
                 <button
                   type="button"
                   onClick={() => handleSave()}
-                  className={`w-full sm:w-auto px-6 py-2.5 text-xs sm:text-sm font-bold text-white rounded-lg shadow-md transition-colors cursor-pointer flex items-center justify-center gap-2 text-center ${
-                    isSaved
-                      ? 'bg-emerald-700 hover:bg-emerald-600 ring-2 ring-emerald-500/30'
-                      : 'bg-stone-900 hover:bg-stone-800'
+                  disabled={isSaving}
+                  className={`w-full sm:w-auto px-6 py-2.5 text-xs sm:text-sm font-bold text-white rounded-lg shadow-md transition-colors flex items-center justify-center gap-2 text-center ${
+                    isSaving
+                      ? 'bg-stone-600 cursor-not-allowed opacity-80'
+                      : isSaved
+                      ? 'bg-emerald-700 hover:bg-emerald-600 ring-2 ring-emerald-500/30 cursor-pointer'
+                      : 'bg-stone-900 hover:bg-stone-800 cursor-pointer'
                   }`}
                 >
-                  <CheckCircle2 className={`w-4 h-4 ${isSaved ? 'text-emerald-100' : 'text-emerald-400'}`} />
-                  <span>{isSaved ? 'Registro Guardado ✓' : 'Guardar y Asentar Registro'}</span>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+                      <span>Guardando y asentando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className={`w-4 h-4 ${isSaved ? 'text-emerald-100' : 'text-emerald-400'}`} />
+                      <span>{isSaved ? 'Registro Guardado ✓' : 'Guardar y Asentar Registro'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -2803,68 +2842,87 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
                 onGoToCertificado={() => {
                   setIsForjaModalOpen(false);
                 }}
-                onUseForCertificate={async (finalConfig, embedding) => {
+                onUseForCertificate={async (finalConfig, embedding, sourceImage) => {
                   setIsMonogramLinked(true);
                   setIsForjaModalOpen(false);
                   
-                  // FASE_0_3: generar PNG del fierro + guardar como base64 (subida diferida)
-                  let fierroBase64 = '';
-                  try {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 400;
-                    canvas.height = 400;
-                    const ctx = canvas.getContext('2d');
-                    if (ctx) {
-                      ctx.fillStyle = '#ffffff';
-                      ctx.fillRect(0, 0, 400, 400);
-                      
-                      const { renderBrandToCanvas } = await import('../utils/canvasRenderer');
-                      renderBrandToCanvas(ctx, 400, 400, finalConfig, {
-                        background: 'transparent',
-                        showShadow: false,
-                        resolutionScale: 2,
-                      });
-                      
-                      fierroBase64 = canvas.toDataURL('image/png');
-                      console.log('%c[Forja] PNG del fierro generado en memoria', 'color: #22c55e', {
-                        size: fierroBase64.length,
-                      });
-                    }
-                  } catch (err) {
-                    console.warn('[Forja] No se pudo generar PNG del fierro:', err);
+                  if (onChangeBrandConfig) {
+                    onChangeBrandConfig(finalConfig);
                   }
-                  
-                  if (embedding) {
-                    onChangeProducerData((prev) => ({
-                      ...prev,
-                      vector_64d: embedding.embedding,
-                      brandVector: embedding.embedding,
-                      vector_checksum: embedding.checksum,
-                      vector_density: embedding.density,
-                      vector_symmetry_h: embedding.symmetryH,
-                      vector_symmetry_v: embedding.symmetryV,
-                      vector_proportions: embedding.proportions,
-                      vector_varianza: embedding.variance,
-                      fierroDigitalizadoPhoto: fierroBase64 || prev.fierroDigitalizadoPhoto,
-                    }));
-                    console.log('%c[Forja] Vector 64D + PNG vinculados', 'color: #22c55e', {
-                      checksum: embedding.checksum,
-                      density: embedding.density,
-                      celdas: embedding.embedding.length,
+
+                  let fierroBase64 = '';
+                  if (sourceImage) {
+                    // FASE_FIERRO_REAL: conservar la imagen real que el operador vectorizó/aceptó,
+                    // en lugar de un monograma sintético, para que la miniatura y el expediente
+                    // muestren la imagen de la que realmente salieron las lecturas.
+                    fierroBase64 = sourceImage;
+                    console.log('%c[Forja] Imagen real del fierro vinculada al expediente', 'color: #22c55e', {
+                      size: fierroBase64.length,
                     });
                   } else {
-                    onChangeProducerData((prev) => ({
-                      ...prev,
-                      fierroDigitalizadoPhoto: fierroBase64 || prev.fierroDigitalizadoPhoto,
-                    }));
-                    console.warn('[Forja] Vinculado SIN embedding');
+                    try {
+                      const canvas = document.createElement('canvas');
+                      canvas.width = 400;
+                      canvas.height = 400;
+                      const ctx = canvas.getContext('2d');
+                      if (ctx) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, 400, 400);
+                        
+                        const { renderBrandToCanvas } = await import('../utils/canvasRenderer');
+                        renderBrandToCanvas(ctx, 400, 400, finalConfig, {
+                          background: 'transparent',
+                          showShadow: false,
+                          resolutionScale: 2,
+                        });
+                        
+                        fierroBase64 = canvas.toDataURL('image/png');
+                        console.log('%c[Forja] PNG del fierro generado y vinculado correctamente', 'color: #22c55e', {
+                          size: fierroBase64.length,
+                        });
+                      }
+                    } catch (err) {
+                      console.warn('[Forja] No se pudo generar PNG del fierro:', err);
+                    }
                   }
                   
-                  setSaveAlert('✅ Fierro "' + (finalConfig.initials || 'AB') + '" disenado y vinculado. Se subira a Cloudinary al guardar.');
+                  onChangeProducerData((prev) => ({
+                    ...prev,
+                    vector_64d: embedding ? embedding.embedding : prev.vector_64d,
+                    brandVector: embedding ? embedding.embedding : prev.brandVector,
+                    vector_checksum: embedding ? embedding.checksum : prev.vector_checksum,
+                    vector_density: embedding ? embedding.density : prev.vector_density,
+                    vector_symmetry_h: embedding ? embedding.symmetryH : prev.vector_symmetry_h,
+                    vector_symmetry_v: embedding ? embedding.symmetryV : prev.vector_symmetry_v,
+                    vector_proportions: embedding ? embedding.proportions : prev.vector_proportions,
+                    vector_varianza: embedding ? embedding.variance : prev.vector_varianza,
+                    fierroDigitalizadoPhoto: fierroBase64 || prev.fierroDigitalizadoPhoto,
+                  }));
+
+                  // Forzar re-render de la Hoja 5 (solo modo diseño: sin imagen real) para
+                  // que aparezca la miniatura del monograma inmediatamente
+                  if (!sourceImage) {
+                    setTimeout(() => {
+                      const canvasHoja5 = hoja5FierroCanvasRef.current;
+                      if (canvasHoja5 && finalConfig) {
+                        const ctx5 = canvasHoja5.getContext('2d');
+                        if (ctx5) {
+                          renderBrandToCanvas(ctx5, canvasHoja5.width, canvasHoja5.height, finalConfig, {
+                            background: 'transparent',
+                            showShadow: false,
+                            resolutionScale: 1.2,
+                          });
+                        }
+                      }
+                    }, 150);
+                  }
+                  
+                  setSaveAlert('✅ Monograma Oficial "' + (finalConfig.initials || 'AT') + '" vinculado exitosamente al expediente.');
                   setTimeout(() => setSaveAlert(null), 5000);
                 }}
                 useForCertificateLabel="✅ Vincular este Diseño al Expediente"
-              />
+             derivedInitials={derivedInitials}
+           />
             </div>
 
             <div className="p-3 bg-stone-100 border-t border-stone-200 flex items-center justify-between text-xs text-stone-500 shrink-0">
@@ -2939,3 +2997,7 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
     </div>
   );
 };
+
+
+
+

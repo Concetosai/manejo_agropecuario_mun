@@ -3,6 +3,7 @@ import { BrandConfig, TraditionalSymbol, BrandOrientation, FinishStyle } from '.
 import { renderBrandToCanvas, getBrandDataUrl } from '../utils/canvasRenderer';
 import { runAntiDuplicityCheck, generateUniqueProposals, formatSymbolName, formatOrientationName } from '../utils/similarity';
 import { VectorizacionFierroPanel } from './VectorizacionFierroPanel';
+import { ImportarImagenFierro } from './ImportarImagenFierro';
 import type { FierroEmbeddingResult } from '../utils/brandVectorization';
 import {
   Sparkles,
@@ -24,9 +25,10 @@ interface TabCreadorProps {
   onGoToAntiduplicidad: () => void;
   onGoToCertificado: () => void;
   /** FIX_FORJA_MODAL: cuando se pasa, muestra boton "Usar en Expediente" (para modal de Hoja 4) */
-  onUseForCertificate?: (config: BrandConfig, embedding?: FierroEmbeddingResult | null) => void;
+  onUseForCertificate?: (config: BrandConfig, embedding?: FierroEmbeddingResult | null, sourceImage?: string | null) => void;
   /** FIX_FORJA_MODAL: texto personalizado para el boton de vinculo */
   useForCertificateLabel?: string;
+  derivedInitials?: string;
 }
 
 export const TabCreador: React.FC<TabCreadorProps> = ({
@@ -36,6 +38,7 @@ export const TabCreador: React.FC<TabCreadorProps> = ({
   onGoToCertificado,
   onUseForCertificate,
   useForCertificateLabel,
+  derivedInitials,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [backgroundView, setBackgroundView] = useState<'transparent' | 'white' | 'parchment' | 'leather'>('parchment');
@@ -50,6 +53,8 @@ export const TabCreador: React.FC<TabCreadorProps> = ({
   const [scanVersion, setScanVersion] = useState<number>(0);
   const [lastScanTime, setLastScanTime] = useState<string>(() => new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
   const [scanHistory, setScanHistory] = useState<Array<{ time: string; initials: string; hash: string; similarity: number }>>([]);
+  // FASE_3_MODO_IMPORTAR: selector de modo (disenar o importar imagen)
+  const [modo, setModo] = useState<'disenar' | 'importar'>('disenar');
 
   // FIX_REANALIZAR: Real-time similarity check. Se recalcula en cada cambio + manualmente via scanVersion
   const antiDuplicityStatus = React.useMemo(
@@ -224,6 +229,37 @@ export const TabCreador: React.FC<TabCreadorProps> = ({
         </div>
       )}
 
+      {/* FASE_3_MODO_IMPORTAR: Selector de modo */}
+      <div className="mb-6 bg-white border-2 border-stone-200 rounded-xl p-2 flex items-center gap-2 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setModo('disenar')}
+          className={`flex-1 px-4 py-3 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            modo === 'disenar'
+              ? 'bg-amber-700 text-white shadow-md ring-2 ring-amber-400/50'
+              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+          }`}
+        >
+          <span className="text-lg">🎨</span>
+          <span>Diseñar Fierro (Laboratorio de Forja)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setModo('importar')}
+          className={`flex-1 px-4 py-3 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            modo === 'importar'
+              ? 'bg-emerald-700 text-white shadow-md ring-2 ring-emerald-400/50'
+              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+          }`}
+        >
+          <span className="text-lg">📷</span>
+          <span>Importar Foto del Fierro Físico</span>
+        </button>
+      </div>
+
+      {/* FASE_3_MODO_IMPORTAR: Modo Diseñar (existente) */}
+      {modo === 'disenar' && (
+      <>
       {/* Main Studio Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start w-full max-w-full">
         {/* Left Column: Canvas Viewport & Background Switcher (5 cols) */}
@@ -731,19 +767,6 @@ export const TabCreador: React.FC<TabCreadorProps> = ({
             </button>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* FIX_FORJA_MODAL: boton "Usar en Expediente" solo visible en modo modal */}
-              {onUseForCertificate && (
-                <button
-                  type="button"
-                  onClick={() => onUseForCertificate(brandConfig, fierroEmbedding)}
-                  className="px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 rounded-lg shadow-md transition-all cursor-pointer flex items-center gap-1.5 ring-2 ring-amber-500/30 active:scale-95"
-                  title="Vincular este diseno al expediente de la Hoja 4"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>{useForCertificateLabel || 'Usar este Diseño en el Expediente'}</span>
-                </button>
-              )}
-
               {/* FIX_BLOQUEO_CERT: boton condicional segun vectorizacion + similitud */}
               {(() => {
                 const enModoModal = Boolean(onUseForCertificate);
@@ -782,6 +805,38 @@ export const TabCreador: React.FC<TabCreadorProps> = ({
           </div>
         </div>
       </div>
+      </>
+      )}
+
+      {/* FASE_3_MODO_IMPORTAR: Modo Importar Imagen */}
+      {modo === 'importar' && (
+        <div className="max-w-4xl mx-auto">
+          <ImportarImagenFierro
+            onUseForCertificate={(config, embedding, sourceImage) => {
+              // Actualizar el brandConfig global
+              onChangeBrandConfig(config);
+              // Guardar el embedding para que onUseForCertificate original lo use
+              setFierroEmbedding(embedding);
+              setHasVectorizado(!!embedding);
+              // Llamar al callback original (si existe)
+              if (onUseForCertificate) {
+                onUseForCertificate(config, embedding, sourceImage);
+              }
+            }}
+            useForCertificateLabel={useForCertificateLabel || 'Usar este Fierro en el Expediente'}
+            currentBrandConfig={brandConfig}
+         derivedInitials={derivedInitials}
+       />
+        </div>
+      )}
     </div>
   );
 };
+
+
+
+
+
+
+
+

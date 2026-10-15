@@ -5,12 +5,16 @@ interface VectorizacionFierroPanelProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   onVectorizado?: (embedding: FierroEmbeddingResult) => void;
   highestSimilarity?: number;
+  onConfirm?: () => void;
+  onClose?: () => void;
 }
 
 export const VectorizacionFierroPanel: React.FC<VectorizacionFierroPanelProps> = ({
   canvasRef,
   onVectorizado,
   highestSimilarity = 0,
+  onConfirm,
+  onClose,
 }) => {
   const [isVectorizing, setIsVectorizing] = useState(false);
   const [embedding, setEmbedding] = useState<FierroEmbeddingResult | null>(null);
@@ -53,7 +57,7 @@ export const VectorizacionFierroPanel: React.FC<VectorizacionFierroPanelProps> =
 
       console.log('%c[Vectorizacion] Completado', 'color: #22c55e');
       console.log('   Densidad:', (result.density * 100).toFixed(1) + '%');
-      console.log('   Trazos activos:', result.activeCellCount + '/64');
+      console.log('   Trazos activos:', result.activeCellCount + '/256');
       console.log('   Checksum:', result.checksum);
 
       setEmbedding(result);
@@ -80,7 +84,7 @@ export const VectorizacionFierroPanel: React.FC<VectorizacionFierroPanelProps> =
               Paso 4: Vectorización del Fierro
             </h4>
             <p className="text-[10px] text-stone-500">
-              Análisis matemático con embedding de 64 dimensiones (Sobel + Raster 8x8)
+              Análisis matemático con embedding de 256 dimensiones (Sobel + Raster 16x16)
             </p>
           </div>
         </div>
@@ -94,7 +98,7 @@ export const VectorizacionFierroPanel: React.FC<VectorizacionFierroPanelProps> =
       {!embedding && !isVectorizing && (
         <div className="text-center py-5">
           <p className="text-xs text-stone-600 mb-3 max-w-md mx-auto">
-            Haga clic en el botón para procesar el fierro actual y generar el vector matemático de 64 dimensiones.
+            Haga clic en el botón para procesar el fierro actual y generar el vector matemático de 256 dimensiones.
           </p>
           <button
             type="button"
@@ -110,7 +114,7 @@ export const VectorizacionFierroPanel: React.FC<VectorizacionFierroPanelProps> =
         <div className="text-center py-6">
           <div className="w-10 h-10 border-4 border-stone-200 border-t-amber-700 rounded-full animate-spin mx-auto mb-3" />
           <p className="text-xs font-bold text-stone-700">
-            Generando embedding de 64 dimensiones...
+            Generando embedding de 256 dimensiones...
           </p>
         </div>
       )}
@@ -122,13 +126,13 @@ export const VectorizacionFierroPanel: React.FC<VectorizacionFierroPanelProps> =
               Densidad: {(embedding.density * 100).toFixed(1)}%
             </span>
             <span className="text-[11px] font-mono bg-white px-2.5 py-1 rounded-md border border-stone-200 text-stone-700">
-              Trazos: <strong>{hvyCount}</strong>/64
+              Trazos: <strong>{hvyCount}</strong>/256
             </span>
             <span className="text-[11px] font-mono bg-white px-2.5 py-1 rounded-md border border-stone-200 text-stone-700">
-              Medios: <strong>{medCount}</strong>/64
+              Medios: <strong>{medCount}</strong>/256
             </span>
             <span className="text-[11px] font-mono bg-white px-2.5 py-1 rounded-md border border-stone-200 text-stone-700">
-              Fondo: <strong>{bgCount}</strong>/64
+              Fondo: <strong>{bgCount}</strong>/256
             </span>
             <span className="text-[11px] font-mono bg-white px-2.5 py-1 rounded-md border border-stone-200 text-stone-600" title="Checksum FNV-1a">
               Huella: <strong className="text-stone-800">{embedding.checksum}</strong>
@@ -146,12 +150,12 @@ export const VectorizacionFierroPanel: React.FC<VectorizacionFierroPanelProps> =
             <span className="text-[9px] text-stone-400">0.0000 (Fondo) → 1.0000 (Trazo)</span>
           </div>
 
-          <div className="grid grid-cols-8 gap-1 p-2 bg-stone-100 rounded-lg border border-stone-200">
+          <div className="grid grid-cols-[repeat(16,minmax(0,1fr))] gap-0.5 p-2 bg-stone-100 rounded-lg border border-stone-200">
             {embedding.embedding.map((val, i) => {
               const isBackground = val < 0.40;
               const isHeavy = val > 0.70;
-              const row = Math.floor(i / 8) + 1;
-              const col = (i % 8) + 1;
+              const row = Math.floor(i / 16) + 1;
+              const col = (i % 16) + 1;
               const isHovered = hoveredCell?.index === i;
 
               let bgColor = '#ffffff';
@@ -234,17 +238,28 @@ export const VectorizacionFierroPanel: React.FC<VectorizacionFierroPanelProps> =
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-2 border-t border-stone-200">
+          <div className="flex flex-col sm:flex-row items-center justify-between pt-3 border-t border-stone-200 gap-2">
             <span className="text-[10px] text-stone-500">
               {embedding.processingTimeMs}ms · {new Date(embedding.timestamp).toLocaleTimeString('es-MX')}
             </span>
-            <button
-              type="button"
-              onClick={executeVectorization}
-              className="px-3 py-1.5 bg-white hover:bg-stone-100 text-stone-700 text-[11px] font-semibold rounded border border-stone-300 transition-colors cursor-pointer"
-            >
-              🔄 Re-ejecutar Vectorización
-            </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              {onConfirm && (
+                <button
+                  type="button"
+                  onClick={onConfirm}
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer ring-2 ring-emerald-500/30"
+                >
+                  <span>✅ Vincular este Diseño al Expediente</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={executeVectorization}
+                className="px-3 py-2 bg-white hover:bg-stone-100 text-stone-700 text-[11px] font-semibold rounded-lg border border-stone-300 transition-colors cursor-pointer"
+              >
+                🔄 Re-ejecutar
+              </button>
+            </div>
           </div>
         </div>
       )}

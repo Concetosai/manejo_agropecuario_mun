@@ -60,7 +60,7 @@ const COLUMNAS_REGISTROS = [
   'url_ine', 'url_ficha', 'url_fierro', 'url_certificado',
   'url_foto_titular', 'url_firma',
   'estatus', 'fecha_baja', 'motivo_baja', 'operador_baja',
-  'url_miniatura_fierro', 'url_reporte'
+  'url_miniatura_fierro', 'url_reporte', 'url_certificado_imagen'
 ];
 
 const COLUMNAS_PAGOS = [
@@ -70,7 +70,7 @@ const COLUMNAS_PAGOS = [
   'cashier_name', 'notes', 'referencia_pago', 'metodo_pago',
   'created_at', 'updated_at',
   'fecha_pago', 'cajero_confirmo', 'operador_entrego', 'recibo_tesoreria', 'fecha_entrega',
-  'url_recibo_cloudinary', 'url_recibo_drive', 'url_reporte'
+  'url_recibo_cloudinary', 'url_recibo_drive', 'url_reporte', 'url_recibo_drive_id'
 ];
 
 const COLUMNAS_CONSTANCIAS = [
@@ -133,6 +133,7 @@ function handleRequest(e, method) {
       case 'confirmarPagoRecibido':   return confirmarPagoRecibido(payload);
       case 'marcarEntregaCompletada': return marcarEntregaCompletada(payload);
       case 'actualizarUrlsRecibo':    return actualizarUrlsRecibo(payload);
+      case 'actualizarUrlCertificado': return actualizarUrlCertificado(payload);
       case 'revalidarRegistro':       return revalidarRegistro(payload);
       case 'cancelarRegistro':        return cancelarRegistro(payload);
       case 'emitirConstancia':        return emitirConstancia(payload);
@@ -464,6 +465,10 @@ function actualizarUrlsRecibo(payload) {
     const col = COLUMNAS_PAGOS.indexOf('url_recibo_drive') + 1;
     if (col > 0) sheet.getRange(row, col).setValue(data.url_recibo_drive || '');
   }
+  if (data.url_recibo_drive_id !== undefined) {
+    const col = COLUMNAS_PAGOS.indexOf('url_recibo_drive_id') + 1;
+    if (col > 0) sheet.getRange(row, col).setValue(data.url_recibo_drive_id || '');
+  }
   if (data.url_reporte !== undefined) {
     const col = COLUMNAS_PAGOS.indexOf('url_reporte') + 1;
     if (col > 0) sheet.getRange(row, col).setValue(data.url_reporte || '');
@@ -481,6 +486,29 @@ function actualizarUrlsRecibo(payload) {
 // ============================================================================
 // TRÁMITES 2026
 // ============================================================================
+
+function actualizarUrlCertificado(payload) {
+  const data = payload.data || payload;
+  const folio = data.folio;
+  const urlCertificadoImagen = data.url_certificado_imagen;
+
+  if (!folio) return jsonResponse({ success: false, error: 'Falta folio' });
+  if (!urlCertificadoImagen) return jsonResponse({ success: false, error: 'Falta URL del certificado' });
+
+  const sheet = getSheet(SHEET_NAME);
+  const row = buscarFilaPorFolio(SHEET_NAME, folio);
+  if (row <= 0) return jsonResponse({ success: false, error: 'Registro no encontrado: ' + folio });
+
+  const col = asegurarColumna(sheet, 'url_certificado_imagen');
+  sheet.getRange(row, col).setValue(urlCertificadoImagen || '');
+
+  return jsonResponse({
+    success: true,
+    action: 'url_certificado_imagen_actualizada',
+    folio: folio,
+    row: row
+  });
+}
 
 function revalidarRegistro(payload) {
   const data = payload.data || payload;
@@ -875,6 +903,7 @@ function subirArchivo(payload) {
   const filename = payload.filename || 'archivo_' + Date.now() + '.pdf';
   const subfolder = payload.subfolder || null;
   const mimeType = payload.mimeType || 'application/pdf';
+  const fileId = payload.fileId || '';
 
   if (!fileBase64) {
     return jsonResponse({ success: false, error: 'Falta fileBase64' });
@@ -885,16 +914,49 @@ function subirArchivo(payload) {
     base64Data = base64Data.split('base64,')[1];
   }
 
-  let blob;
+  let bytes;
   try {
-    blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, filename);
+    bytes = Utilities.base64Decode(base64Data);
   } catch (decodeErr) {
     return jsonResponse({ success: false, error: 'Base64 inválido: ' + decodeErr.message });
+  }
+
+  if (fileId) {
+    try {
+      const existing = DriveApp.getFileById(fileId);
+      existing.setContent(bytes);
+      if (existing.getName() !== filename) {
+        existing.setName(filename);
+      }
+      try {
+        existing.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      } catch (shareErr) {
+        Logger.log('No se pudo reafirmar sharing: ' + shareErr.message);
+      }
+      return jsonResponse({
+        success: true,
+        fileId: existing.getId(),
+        url: 'https://drive.google.com/uc?export=view&id=' + existing.getId(),
+        urlPreview: 'https://drive.google.com/file/d/' + existing.getId() + '/view',
+        filename: existing.getName(),
+        provider: 'gdrive',
+        overwritten: true
+      });
+    } catch (err) {
+      Logger.log('No se pudo sobrescribir fileId ' + fileId + ': ' + err.message);
+    }
   }
 
   const parentId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID');
   if (!parentId) {
     return jsonResponse({ success: false, error: 'DRIVE_FOLDER_ID no configurado' });
+  }
+
+  let blob;
+  try {
+    blob = Utilities.newBlob(bytes, mimeType, filename);
+  } catch (blobErr) {
+    return jsonResponse({ success: false, error: 'Error creando blob: ' + blobErr.message });
   }
 
   try {
@@ -916,7 +978,8 @@ function subirArchivo(payload) {
       url: 'https://drive.google.com/uc?export=view&id=' + file.getId(),
       urlPreview: 'https://drive.google.com/file/d/' + file.getId() + '/view',
       filename: filename,
-      provider: 'gdrive'
+      provider: 'gdrive',
+      overwritten: false
     });
   } catch (err) {
     return jsonResponse({
@@ -929,6 +992,18 @@ function subirArchivo(payload) {
 // ============================================================================
 // HELPERS INTERNOS
 // ============================================================================
+
+// FIX_ASEGURAR_COLUMNA: garantiza que exista una columna en el encabezado (fila 1).
+// Si no existe, la agrega al final. Devuelve el índice de columna (1-based).
+function asegurarColumna(sheet, nombreColumna) {
+  const lastCol = Math.max(sheet.getLastColumn(), 1);
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const idx = headers.indexOf(nombreColumna);
+  if (idx >= 0) return idx + 1;
+  const newCol = lastCol + 1;
+  sheet.getRange(1, newCol).setValue(nombreColumna);
+  return newCol;
+}
 
 function getSheet(sheetName) {
   const sheetId = PropertiesService.getScriptProperties().getProperty('SHEET_ID');

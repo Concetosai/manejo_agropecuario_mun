@@ -23,9 +23,9 @@ antiduplicidad y certificación de Fierros de Herrar y Señales de Sangre.
    ```env
    VITE_GOOGLE_API_URL=<url del Apps Script>
    VITE_GOOGLE_TOKEN=<token>
-   OLLAMA_URL=http://192.168.1.13:11434
-   # Opcional (habilita IA/OCR multimodal y análisis heráldico):
-   GEMINI_API_KEY=<tu_api_key>
+   # Motores de IA/OCR (opcionales en local; recomendados):
+   GROQ_API_KEY=<tu_groq_key>
+   GEMINI_API_KEY=<tu_gemini_key>
    ```
 3. Arranca:
    ```bash
@@ -36,7 +36,7 @@ antiduplicidad y certificación de Fierros de Herrar y Señales de Sangre.
 ## Despliegue en Vercel
 
 El proyecto está preparado para Vercel con frontend estático (Vite) y una función
-serverless que reutiliza la app Express (`api/[...path].ts` → `server/app.ts`).
+serverless que reutiliza la app Express (`api/index.ts` → `api/app.ts`).
 
 ### 1. Variables de entorno (Vercel → Project → Settings → Environment Variables)
 
@@ -46,14 +46,15 @@ Necesarias en **build** (las `VITE_*` se incrustan en el bundle):
 |---|---|
 | `VITE_GOOGLE_API_URL` | URL de ejecución del Google Apps Script |
 | `VITE_GOOGLE_TOKEN` | Token de acceso al Apps Script |
-| `VITE_FIREBASE_*` | Configuración de Firebase (si se usa Firestore) |
+| `VITE_FIREBASE_*` | Configuración de Firebase/Firestore (opcional; sin ellas se usa Google Sheets) |
 
-Opcionales para las funciones `/api`:
+Necesarias para las funciones `/api` (backend):
 
 | Variable | Descripción |
 |---|---|
-| `GEMINI_API_KEY` | Habilita el asistente IA y OCR multimodal |
-| `PADDLE_OCR_URL` | Endpoint PaddleOCR (por defecto LAN 192.168.1.13; no accesible desde Vercel) |
+| `GROQ_API_KEY` | Motor 0 (primario) del OCR de credencial INE (Groq Vision) |
+| `GEMINI_API_KEY` | Motor 2 del OCR, asistente IA, OCR histórico y análisis heráldico |
+| `PADDLE_OCR_URL` | Endpoint PaddleOCR (opcional; por defecto LAN 192.168.1.13, no accesible desde Vercel) |
 
 ### 2. Configuración
 

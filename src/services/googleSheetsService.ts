@@ -794,3 +794,39 @@ export async function actualizarUrlsRecibo(
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Actualiza la URL de la imagen del certificado (PNG) en la hoja REGISTROS.
+ * FIX_CERTIFICADO_IMAGEN: persiste la imagen del certificado generada en Cloudinary.
+ */
+export async function actualizarUrlCertificadoImagen(
+  folio: string,
+  urlCertificadoImagen: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!folio) {
+    return { success: false, error: 'Falta folio' };
+  }
+  if (!urlCertificadoImagen) {
+    return { success: false, error: 'Falta URL del certificado' };
+  }
+
+  try {
+    const result = await callGoogleApi('actualizarUrlCertificado', 'POST', {
+      folio,
+      url_certificado_imagen: urlCertificadoImagen,
+    });
+
+    if (result && result.success) {
+      console.log('%c[Sheets] URL del certificado actualizada:', 'color: #22c55e', folio);
+      return { success: true };
+    }
+
+    return {
+      success: false,
+      error: (result && result.error) || 'Respuesta invalida del servidor',
+    };
+  } catch (err: any) {
+    console.error('[Sheets] Error actualizando URL del certificado:', err);
+    return { success: false, error: err?.message || 'Error desconocido' };
+  }
+}

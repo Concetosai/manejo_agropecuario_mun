@@ -52,6 +52,7 @@ interface FinanceManagerProps {
   preloadedOrderData?: PreloadedOrderData | null;
   onBackToHub?: () => void;
   onGoToCertificado?: () => void;
+  onVerCertificadoImagen?: (folio: string) => void;
 }
 
 // Normalizer for concepts received from procedures or catalogs
@@ -89,6 +90,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
   preloadedOrderData,
   onBackToHub,
   onGoToCertificado,
+  onVerCertificadoImagen,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'history' | 'new_order'>(
     initialCategory || preloadedOrderData ? 'new_order' : 'history'
@@ -553,15 +555,21 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
               </span>
             )}
 
-            {currentProducer?.fullName && onGoToCertificado && (
+            {currentProducer?.fullName && (onVerCertificadoImagen || onGoToCertificado) && (
               <button
                 type="button"
                 onClick={() => {
                   if (!lastSavedOrder) {
-                    alert('Debe guardar primero la orden de cobro antes de ir al Certificado Oficial.');
+                    alert('Debe guardar primero la orden de cobro antes de ver el Certificado Oficial.');
                     return;
                   }
-                  onGoToCertificado();
+                  if (onVerCertificadoImagen && lastSavedOrder.folioFierro) {
+                    onVerCertificadoImagen(lastSavedOrder.folioFierro);
+                  } else if (onVerCertificadoImagen && currentProducer.folio) {
+                    onVerCertificadoImagen(currentProducer.folio);
+                  } else if (onGoToCertificado) {
+                    onGoToCertificado();
+                  }
                 }}
                 disabled={!lastSavedOrder}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border shadow-2xs ${
@@ -569,10 +577,14 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                     ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-700'
                     : 'bg-stone-100 text-stone-400 border-stone-300 cursor-not-allowed'
                 }`}
-                title={lastSavedOrder ? 'Ir al Certificado Oficial del productor' : 'Guarde primero la orden de cobro para habilitar este boton'}
+                title={
+                  lastSavedOrder
+                    ? 'Ver la imagen del Certificado Oficial (Cloudinary)'
+                    : 'Guarde primero la orden de cobro para habilitar este boton'
+                }
               >
                 <FileCheck2 className="w-3.5 h-3.5" />
-                <span>Ir al Certificado Oficial</span>
+                <span>Ver Certificado Oficial</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}

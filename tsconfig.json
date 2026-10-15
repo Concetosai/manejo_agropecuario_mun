@@ -24,5 +24,15 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["node_modules", "src/**/__tests__/*"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/__tests__/*",
+    "backups-*",
+    "**/*.bak",
+    "**/*.bak_*",
+    "**/*.bak-*",
+    "**/*.backup",
+    "**/*.backup-*"
+  ]
 }

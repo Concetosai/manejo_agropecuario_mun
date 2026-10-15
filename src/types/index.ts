@@ -115,6 +115,7 @@ export interface ProducerData {
   fotoTitularDriveUrl?: string; // URL pública de la foto del titular en Drive
   firmaDriveUrl?: string; // URL pública de la firma en Drive
   certificadoDriveUrl?: string; // URL pública del certificado en Cloudinary
+  certificadoImagenUrl?: string; // URL de la imagen PNG del certificado en Cloudinary
   fichaOriginalPhoto?: string; // Data URL Base64 comprimida de la Ficha Original escaneada
   fierroDigitalizadoPhoto?: string; // Data URL Base64 comprimida del Fierro Digitalizado
   certificadoGeneradoPhoto?: string; // Data URL Base64 comprimida del Certificado Generado
@@ -190,9 +191,8 @@ export interface HistoricalRecord {
   ineDriveUrl?: string;
   fotoTitularDriveUrl?: string;
   firmaDriveUrl?: string;
-  certificadoDriveUrl?: string;
-
-  // FIX_VECTOR_64D_HISTORICAL: vector matematico del fierro
+  certificadoDriveUrl?: string; // FIX_VECTOR_64D_HISTORICAL: vector matematico del fierro
+  certificadoImagenUrl?: string; // URL de la imagen PNG del certificado en Cloudinary
   vector_64d?: number[];
   brandVector?: number[];
   vector_checksum?: string;

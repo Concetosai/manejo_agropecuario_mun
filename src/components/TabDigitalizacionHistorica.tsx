@@ -2081,7 +2081,7 @@ export const TabDigitalizacionHistorica: React.FC<TabDigitalizacionHistoricaProp
                         </div>
 
                         <div className="grid grid-cols-8 gap-1.5 mb-2.5 p-2 bg-stone-100 rounded-xl border border-stone-200 shadow-inner">
-                          {(embeddingData?.embedding || Array(64).fill(0)).map((val, i) => {
+                          {(embeddingData?.embedding || Array(256).fill(0)).map((val, i) => {
                             const isBackground = val < 0.40;
                             const isMediumStroke = val >= 0.40 && val <= 0.70;
                             const isHeavyStroke = val > 0.70;

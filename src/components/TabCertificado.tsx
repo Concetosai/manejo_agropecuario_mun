@@ -8,6 +8,9 @@ import { ValidationErrorsModal } from './ValidationErrorsModal';
 import { PanucoMunicipalLogo } from './PanucoMunicipalLogo';
 import { TexasGuillocheCertificateBorder } from './TexasGuillocheCertificateBorder';
 import { generateSecureCertificatePdf } from '../utils/pdfGenerator';
+import { subirImagenACloudinary } from '../services/cloudinaryService';
+import { actualizarUrlCertificadoImagen } from '../services/googleSheetsService';
+import html2canvas from 'html2canvas-pro';
 import { DocumentDispatchSection } from './DocumentDispatchSection';
 import { FichaRegistroTradicional } from './FichaRegistroTradicional';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
@@ -69,6 +72,8 @@ interface TabCertificadoProps {
   onCerrarCiclo?: () => void;
   // FASE_0_2: callback para generar orden de pago desde el certificado
   onGoToFinance?: (category?: 'ALTA', preloaded?: any) => void;
+  // FIX_CERT_MODE: si es true, mostrar el PDF consolidado (no editable)
+  forceConsolidatedMode?: boolean;
 }
 
 export const TabCertificado: React.FC<TabCertificadoProps> = ({
@@ -80,6 +85,7 @@ export const TabCertificado: React.FC<TabCertificadoProps> = ({
   onBack,
   onCerrarCiclo,
   onGoToFinance,
+  forceConsolidatedMode = false,
 }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [producerPhoto, setProducerPhoto] = useState<string>(producerData.producerPhoto || '');
@@ -103,8 +109,13 @@ export const TabCertificado: React.FC<TabCertificadoProps> = ({
   // Validate entire producer record
   const validationState = useMemo(() => validateFullProducerData(producerData), [producerData]);
 
+  // FIX_FIERRO_REAL: imagen real del fierro (foto importada/validada por antiduplicidad o URL de Cloudinary)
+  const realFierroImage = useMemo(
+    () => producerData.fierroDigitalizadoPhoto || producerData.fierroImageUrl || '',
+    [producerData.fierroDigitalizadoPhoto, producerData.fierroImageUrl]
+  );
+
   const certCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const fierroCanvasRef = useRef<HTMLCanvasElement | null>(null); // FIX_RENDER: Canvas dedicado al fierro grande
   const idCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const idCanvasBackRef = useRef<HTMLCanvasElement | null>(null);
   const certificateContainerRef = useRef<HTMLDivElement | null>(null);
@@ -112,6 +123,10 @@ export const TabCertificado: React.FC<TabCertificadoProps> = ({
   const cardContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  // FIX_IMG_AUTO: estados para la captura del certificado como imagen
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  
+  const [imageGenError, setImageGenError] = useState<string | null>(null);
   const [pdfProgressText, setPdfProgressText] = useState('');
   const [pdfSuccessNotice, setPdfSuccessNotice] = useState<{ filename: string; hash: string } | null>(null);
 
@@ -145,6 +160,185 @@ export const TabCertificado: React.FC<TabCertificadoProps> = ({
       .catch((err) => console.error('Error generating QR', err));
   }, [producerData]);
 
+
+  // FIX_PDF_AUTO_V2: generar el PDF automáticamente al montar en modo consolidado
+  useEffect(() => {
+    if (!forceConsolidatedMode) return;
+    if (producerData.certificadoDriveUrl) return;
+    if (isGeneratingPdf) return;
+    if (!validationState.isValid) {
+      console.warn('[PDF-AUTO-V2] No se puede generar PDF: validación fallida');
+      return;
+    }
+
+    let mounted = true;
+    (async () => {
+      try {
+        console.log('[PDF-AUTO-V2] Generando PDF automáticamente...');
+        setIsGeneratingPdf(true);
+        setPdfProgressText('Generando PDF oficial del certificado...');
+
+        // Esperar a que el DOM esté listo
+        await new Promise(r => setTimeout(r, 800));
+
+        if (!mounted) return;
+
+        await handleDownloadPdf('both');
+
+        if (mounted) {
+          console.log('%c[PDF-AUTO-V2] PDF generado y persistido', 'color: #22c55e; font-weight: bold');
+        }
+      } catch (err) {
+        console.warn('[PDF-AUTO-V2] Error:', err);
+      } finally {
+        if (mounted) {
+          setIsGeneratingPdf(false);
+          setPdfProgressText('');
+        }
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, [forceConsolidatedMode, producerData.certificadoDriveUrl, validationState.isValid]);
+
+  // FIX_IMG_AUTO_SIN_CONSOLIDADO: capturar el certificado como imagen JPG
+  // (corre SIEMPRE que haya certificado en el DOM, no solo en modo consolidado)
+  useEffect(() => {
+    // FIX_CONSOLIDADO_NO_CAPTURA: en modo consolidado (no editable) no hay certificado
+    // en el DOM que capturar; se muestra la imagen ya generada.
+    if (forceConsolidatedMode) return;
+    if (producerData.certificadoImagenUrl) return;
+    if (isGeneratingImage) return;
+    // FIX_DEDUP_UPLOAD_V3: chequear si YA se subio exitosamente (URL final persistida)
+    // Este flag es permanente hasta que el folio cambie. Sobrevive StrictMode.
+    const UPLOADED_KEY = 'panuco_cert_uploaded_' + producerData.folio;
+    const uploadedRaw = localStorage.getItem(UPLOADED_KEY);
+    if (uploadedRaw) {
+      try {
+        const { url } = JSON.parse(uploadedRaw);
+        if (url) {
+          console.log('[IMG-AUTO] Ya existe imagen subida para este folio, saltando:', url);
+          return;
+        }
+      } catch {}
+    }
+    if (!validationState.isValid) {
+      console.warn('[IMG-AUTO] Validacion fallida, no se genera imagen');
+      return;
+    }
+
+    let mounted = true;
+    (async () => {
+      try {
+        console.log('%c[IMG-AUTO] Iniciando captura del certificado...', 'color: #0ea5e9; font-weight: bold');
+        setIsGeneratingImage(true);
+        setImageGenError(null);
+
+        await new Promise(r => setTimeout(r, 1500));
+        if (!mounted) return;
+
+        const certElement = document.querySelector('.print-page-letter') as HTMLElement;
+        if (!certElement) {
+          throw new Error('No se encontro .print-page-letter en el DOM');
+        }
+
+        console.log('%c[IMG-AUTO] Capturando con html2canvas-pro...', 'color: #0ea5e9');
+        const canvas = await html2canvas(certElement, {
+          scale: 2,
+          backgroundColor: '#faf7ef',
+          useCORS: true,
+          logging: false,
+          allowTaint: false,
+        });
+
+        const jpgBase64 = canvas.toDataURL('image/jpeg', 0.85);
+        console.log('%c[IMG-AUTO] JPG generado:', 'color: #22c55e', {
+          sizeKB: Math.round(jpgBase64.length / 1024),
+        });
+
+        const filename = 'CERTIFICADO_' + producerData.folio + '_' + Date.now() + '.jpg';
+        console.log('%c[IMG-AUTO] Subiendo a Cloudinary...', 'color: #0ea5e9');
+        const upload = await subirImagenACloudinary(jpgBase64, filename, '07-Certificados');
+
+        if (!upload.success || !upload.url) {
+          throw new Error('Cloudinary fallo: ' + (upload.error || 'desconocido'));
+        }
+
+        console.log('%c[IMG-AUTO] Subida exitosa:', 'color: #22c55e; font-weight: bold', upload.url);
+
+                if (onChangeProducerData) {
+          onChangeProducerData({
+            ...producerData,
+            certificadoImagenUrl: upload.url,
+          });
+        }
+
+        // FIX_CACHE_CERTIFICADO: actualizar el cache local para que el modal lo vea
+        try {
+          const DB_KEY = 'panuco_fierros_db_v2';
+          const raw = localStorage.getItem(DB_KEY);
+          if (raw) {
+            const db = JSON.parse(raw);
+            const registros = Array.isArray(db) ? db : (db.registros || []);
+            let updated = false;
+            registros.forEach((r: any) => {
+              if (r.folio === producerData.folio) {
+                r.url_certificado_imagen = upload.url;
+                r.certificadoImagenUrl = upload.url;
+                updated = true;
+              }
+            });
+            if (updated) {
+              localStorage.setItem(DB_KEY, JSON.stringify(Array.isArray(db) ? registros : { ...db, registros }));
+              console.log('%c[IMG-AUTO] Cache local actualizado con url_certificado_imagen', 'color: #22c55e');
+            }
+          }
+        } catch (cacheErr) {
+          console.warn('[IMG-AUTO] No se pudo actualizar cache local:', cacheErr);
+        }
+
+        const sheetsResult = await actualizarUrlCertificadoImagen(producerData.folio, upload.url);
+        if (sheetsResult.success) {
+          console.log('%c[IMG-AUTO] URL persistida en Sheets', 'color: #22c55e');
+        } else {
+          console.warn('[IMG-AUTO] No se pudo persistir en Sheets:', sheetsResult.error);
+        }
+
+        // FIX_RESYNC: forzar re-sincronización del cache desde Sheets
+        // (para que el cache local tenga el url_certificado_imagen recién guardado)
+        try {
+          const { inicializarSincronizacion } = await import('../utils/googleSheetsIntegration');
+          const resyncResult = await inicializarSincronizacion();
+          console.log('%c[IMG-AUTO] Cache re-sincronizado desde Sheets', 'color: #22c55e; font-weight: bold', {
+            online: resyncResult.online,
+            registros: resyncResult.registrosDescargados,
+          });
+        } catch (resyncErr: any) {
+          console.warn('[IMG-AUTO] No se pudo re-sincronizar cache:', resyncErr?.message || resyncErr);
+        }
+
+        // FIX_DEDUP_UPLOAD_V3: persistir la URL exitosa para futuras ejecuciones
+        try {
+          localStorage.setItem(
+            'panuco_cert_uploaded_' + producerData.folio,
+            JSON.stringify({ url: upload.url, ts: Date.now() })
+          );
+          console.log('[IMG-AUTO] Flag de subida exitosa persistido');
+        } catch {}
+
+        if (mounted) setIsGeneratingImage(false);
+            } catch (err: any) {
+        console.error('[IMG-AUTO] Error:', err);
+        if (mounted) {
+          setImageGenError(err?.message || 'Error desconocido');
+          setIsGeneratingImage(false);
+        }
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, [producerData.certificadoImagenUrl, validationState.isValid, producerData.folio]);
+
   // Render high-res brand onto the Certificate ornamental frame
   useEffect(() => {
     const canvas = certCanvasRef.current;
@@ -158,30 +352,6 @@ export const TabCertificado: React.FC<TabCertificadoProps> = ({
       resolutionScale: 1.2,
     });
   }, [brandConfig]);
-
-  // FIX_RENDER: useEffect especifico para el canvas GRANDE del fierro
-  useEffect(() => {
-    // FIX_TIMING: Pequeño delay para asegurar que el canvas exista en el DOM
-    const timer = setTimeout(() => {
-      const canvas = fierroCanvasRef.current;
-      if (!canvas) {
-        console.warn('[Fierro Render] Canvas no disponible aun');
-        return;
-      }
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      renderBrandToCanvas(ctx, canvas.width, canvas.height, brandConfig, {
-        background: 'transparent',
-        showShadow: false,
-        resolutionScale: 1.5,
-      });
-
-      console.log('[Fierro Render] Canvas dibujado con iniciales:', brandConfig.initials);
-    }, 150);
-
-    return () => clearTimeout(timer);
-  }, [brandConfig, documentFormat, printDocSelection]); // Se re-ejecuta cuando cambia el formato
 
   // Render miniature brand onto the ID Card Front & Back
   useEffect(() => {
@@ -284,6 +454,36 @@ export const TabCertificado: React.FC<TabCertificadoProps> = ({
       });
 
       if (result.success && result.filename) {
+        // FIX_PDF_PERSIST_TABCERT: subir el PDF a Cloudinary si no está persistido
+        if (!producerData.certificadoDriveUrl && result.blob && onChangeProducerData) {
+          try {
+            setPdfProgressText('Subiendo PDF a Cloudinary...');
+            const pdfBase64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.readAsDataURL(result.blob!);
+            });
+
+            const uploadResult = await subirImagenACloudinary(
+              pdfBase64,
+              result.filename,
+              '07-Certificados'
+            );
+
+            if (uploadResult.success && uploadResult.url) {
+              onChangeProducerData({
+                ...producerData,
+                certificadoDriveUrl: uploadResult.url,
+              });
+              console.log('%c[PDF] Subido a Cloudinary:', 'color: #22c55e', uploadResult.url);
+            } else {
+              console.warn('[PDF] No se pudo subir a Cloudinary:', uploadResult.error);
+            }
+          } catch (err) {
+            console.warn('[PDF] Error subiendo a Cloudinary:', err);
+          }
+        }
+
         recordAuditLog({
           actionType: 'IMPRESION_DOCUMENTO',
           folioAffected: producerData.folio,
@@ -348,6 +548,140 @@ export const TabCertificado: React.FC<TabCertificadoProps> = ({
       reader.readAsDataURL(file);
     }
   };
+
+  // FIX_CERT_MODE: Vista consolidada (PDF no editable)
+  if (forceConsolidatedMode) {
+    // FIX_IMG_AUTO: mostrar imagen si existe, o loader, o fallback al PDF viejo
+    const certUrl = producerData.certificadoImagenUrl || producerData.certificadoDriveUrl;
+    const isImage = !!producerData.certificadoImagenUrl;
+
+    return (
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 w-full max-w-full overflow-x-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-700 to-emerald-800 text-white rounded-2xl p-4 sm:p-5 shadow-lg mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-200 block">
+                Certificado Oficial · {isImage ? 'Imagen Consolidada' : 'PDF Consolidado'}
+              </span>
+              <h1 className="text-lg sm:text-xl font-cinzel font-bold">
+                {producerData.fullName || 'Productor'}
+              </h1>
+              <p className="text-xs text-emerald-100">
+                Folio: <strong>{producerData.folio}</strong> · REG: {producerData.registrationNumber || '—'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 mb-4 flex items-start gap-3">
+          <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-emerald-950">
+              {isImage ? '✅ Certificado generado como imagen' : '✅ Certificado generado como PDF'}
+            </p>
+            <p className="text-xs text-emerald-800 mt-1">
+              {isImage
+                ? 'La imagen del certificado ha sido generada y almacenada en Cloudinary. Este documento es inmutable.'
+                : 'El PDF oficial ha sido generado y persistido. Este documento es inmutable.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Imagen o PDF */}
+        <div className="bg-white rounded-2xl shadow-lg border border-stone-200 overflow-hidden mb-6">
+          {isImage ? (
+            <img
+              src={certUrl}
+              alt="Certificado Oficial"
+              className="w-full h-auto"
+            />
+          ) : isGeneratingImage ? (
+            <div className="flex flex-col items-center justify-center py-20 bg-stone-50">
+              <Loader2 className="w-12 h-12 animate-spin text-amber-600" />
+              <p className="text-sm font-semibold text-stone-700 mt-3">
+                Generando imagen del certificado...
+              </p>
+              <p className="text-xs text-stone-500 mt-1">
+                Esto puede tomar unos segundos
+              </p>
+            </div>
+          ) : imageGenError ? (
+            <div className="flex flex-col items-center justify-center py-20 bg-rose-50">
+              <AlertTriangle className="w-12 h-12 text-rose-600 mb-3" />
+              <p className="text-sm font-semibold text-rose-800">
+                Error generando la imagen
+              </p>
+              <p className="text-xs text-rose-600 mt-1">{imageGenError}</p>
+              {producerData.certificadoDriveUrl && (
+                <iframe
+                  src={producerData.certificadoDriveUrl}
+                  className="w-full h-[70vh] border-0 mt-4"
+                  title="Certificado PDF Oficial"
+                />
+              )}
+            </div>
+          ) : certUrl ? (
+            <iframe
+              src={certUrl}
+              className="w-full h-[70vh] border-0"
+              title="Certificado PDF Oficial"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 bg-stone-50">
+              <FileText className="w-16 h-16 text-stone-300 mb-3" />
+              <p className="text-sm text-stone-500">Certificado pendiente de generar</p>
+            </div>
+          )}
+        </div>
+
+        {/* Botones */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => window.open(certUrl, '_blank')}
+            className="px-4 py-2.5 bg-stone-800 hover:bg-stone-700 text-white font-bold text-xs rounded-lg shadow-md transition-colors flex items-center gap-2 cursor-pointer"
+          >
+            <Printer className="w-4 h-4" />
+            <span>{isImage ? 'Abrir Imagen' : 'Abrir PDF'}</span>
+          </button>
+          <a
+            href={certUrl}
+            download={isImage ? ('CERTIFICADO_' + producerData.folio + '.jpg') : ('CERTIFICADO_' + producerData.folio + '.pdf')}
+            className="px-4 py-2.5 bg-amber-700 hover:bg-amber-600 text-white font-bold text-xs rounded-lg shadow-md transition-colors flex items-center gap-2 cursor-pointer"
+          >
+            <FileDown className="w-4 h-4" />
+            <span>Descargar</span>
+          </a>
+          {onGoToFinance && (
+            <button
+              type="button"
+              onClick={handleGenerarOrdenFinanzas}
+              className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg shadow-md transition-colors flex items-center gap-2 cursor-pointer ring-2 ring-emerald-400/40"
+            >
+              <DollarSign className="w-4 h-4" />
+              <span>Generar Recibo de Pago en Finanzas</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs rounded-lg border border-stone-300 transition-colors flex items-center gap-2 cursor-pointer ml-auto"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Volver</span>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8 w-full max-w-full overflow-x-hidden">
@@ -1064,18 +1398,18 @@ export const TabCertificado: React.FC<TabCertificadoProps> = ({
                 <div className="p-3 bg-gradient-to-b from-[#fdfcf9] to-[#f4eee1] border-[3px] border-[#6d1624] rounded-xl shadow-lg">
                   <div className="border-[1.5px] border-[#d97706] p-1.5 rounded-sm bg-[#faf7ee]">
                     <div className="border border-[#7c1a29]/60 p-2 rounded-xs flex items-center justify-center bg-white">
-                      {brandConfig.initials ? (
-                        <canvas
-                          ref={fierroCanvasRef}
-                          width={280}
-                          height={280}
+                      {realFierroImage ? (
+                        <img
+                          src={realFierroImage}
+                          alt="Diseño autorizado del fierro quemador"
+                          crossOrigin="anonymous"
                           className="w-[220px] h-[220px] sm:w-[260px] sm:h-[260px] print:w-[200px] print:h-[200px] object-contain"
                         />
                       ) : (
-                        <div className="w-[220px] h-[220px] sm:w-[260px] sm:h-[260px] print:w-[200px] print:h-[200px] flex flex-col items-center justify-center text-stone-400 text-center">
+                        <div className="w-[220px] h-[220px] sm:w-[260px] sm:h-[260px] print:w-[200px] print:h-[200px] flex flex-col items-center justify-center text-stone-400 text-center px-4">
                           <Award className="w-12 h-12 mb-2 opacity-40" />
                           <span className="text-[10px] font-sans font-bold">FIERRO QUEMADOR</span>
-                          <span className="text-[9px] font-sans">Sin vincular al expediente</span>
+                          <span className="text-[9px] font-sans leading-tight">Aquí se mostrará el fierro aceptado por el sistema de antiduplicidad</span>
                         </div>
                       )}
                     </div>

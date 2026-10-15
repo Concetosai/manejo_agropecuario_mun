@@ -78,6 +78,9 @@ export default function App() {
   // FIX_BOTON_VOLVER: recordar el tab desde donde se navego al certificado
   const lastTabBeforeCertificadoRef = React.useRef<AppTab>('hub');
 
+  // FIX_CERT_MODE: modo de visualización del certificado
+  const [certificadoMode, setCertificadoMode] = useState<'preview' | 'consolidated'>('preview');
+
   // =========================================================================
   // SYNC_INIT_HOOK: Sincronización automática con Google Sheets al iniciar
   // =========================================================================
@@ -217,6 +220,7 @@ export default function App() {
       fotoTitularDriveUrl: (record as any).url_foto_titular || (record as any).fotoTitularDriveUrl,
       firmaDriveUrl: (record as any).url_firma || (record as any).firmaDriveUrl,
       certificadoDriveUrl: (record as any).url_certificado || (record as any).certificadoDriveUrl,
+      certificadoImagenUrl: (record as any).url_certificado_imagen || (record as any).certificadoImagenUrl || '',
 
       // FASE_0_3: FIERRO (URL del fierro digitalizado) con fallbacks
       fierroImageUrl: (record as any).url_fierro
@@ -251,11 +255,99 @@ export default function App() {
       freehandPaths: [],
     });
 
-    // FIX_NAVEGAR_A_CERTIFICADO: recordar el tab actual y navegar al certificado
+    // FIX_NAVEGAR_A_CERTIFICADO + FIX_CERT_MODE: desde Buscador, MODO PREVIEW
     lastTabBeforeCertificadoRef.current = activeTab;
+    setCertificadoMode('preview');
     setActiveTab('certificado');
   };
 
+  // FIX_VER_CERTIFICADO_IMAGEN: handler para abrir la imagen del certificado
+  // (en lugar de ir al setup editable de TabCertificado).
+  // Acepta un record directo (para el portafolio de evidencias) o busca por folio.
+  const handleVerCertificadoImagen = (folio: string, recordDirecto?: any) => {
+    const DB_KEY = 'panuco_fierros_db_v2';
+    const CACHE_KEY = 'panuco_sheets_cache_v1';
+    let urlCertificado: string | null = null;
+    let recordEncontrado: any = recordDirecto || null;
+
+    const extraerUrlCertificado = (r: any): string | null =>
+      r
+        ? (r.url_certificado_imagen
+          || r.certificadoImagenUrl
+          || r.url_certificado
+          || r.certificadoDriveUrl
+          || r.imagenes?.certificado_generado
+          || r.imagenes?.certificado
+          || null)
+        : null;
+
+    try {
+      if (recordEncontrado) {
+        urlCertificado = extraerUrlCertificado(recordEncontrado);
+      }
+
+      if (!urlCertificado) {
+        const rawDb = localStorage.getItem(DB_KEY);
+        if (rawDb) {
+          const db = JSON.parse(rawDb);
+          const registros = Array.isArray(db) ? db : (db.registros || []);
+          const foundDb = registros.find((r: any) => r.folio === folio);
+          if (foundDb) {
+            recordEncontrado = foundDb;
+            urlCertificado = extraerUrlCertificado(foundDb);
+          }
+        }
+      }
+
+      if (!urlCertificado) {
+        const rawCache = localStorage.getItem(CACHE_KEY);
+        if (rawCache) {
+          const cache = JSON.parse(rawCache);
+          const registros = Array.isArray(cache) ? cache : (cache.registros || []);
+          const found = registros.find((r: any) => r.folio === folio);
+          if (found) {
+            urlCertificado = extraerUrlCertificado(found);
+            if (found && !recordEncontrado) recordEncontrado = found;
+          }
+        }
+      }
+
+      // FIX_VER_CERTIFICADO_FLAG: fuente local confiable de la subida exitosa del certificado
+      if (!urlCertificado) {
+        try {
+          const upRaw = localStorage.getItem('panuco_cert_uploaded_' + folio);
+          if (upRaw) {
+            const { url } = JSON.parse(upRaw);
+            if (url) urlCertificado = url;
+          }
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('[VerCertificado] Error buscando en cache:', err);
+    }
+
+    if (urlCertificado) {
+      console.log('%c[VerCertificado] Imagen encontrada:', 'color: #22c55e', urlCertificado);
+      recordAuditLog({
+        actionType: 'CONSULTA_PADRON',
+        folioAffected: folio,
+        producerAffected: recordEncontrado?.ownerName || recordEncontrado?.nombre_productor || 'N/A',
+        details: `Consulta de imagen del certificado oficial (Cloudinary): ${urlCertificado}`,
+      });
+      window.open(urlCertificado, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // Si NO hay imagen en ninguna parte, abrir certificado en MODO CONSOLIDADO (NO editable)
+    if (recordEncontrado) {
+      handleLoadRecordIntoCertificate(recordEncontrado as HistoricalRecord);
+    }
+    lastTabBeforeCertificadoRef.current = activeTab === 'certificado'
+      ? lastTabBeforeCertificadoRef.current
+      : activeTab;
+    setCertificadoMode('consolidated');
+    setActiveTab('certificado');
+  };
   // Quick Action: generate guaranteed unique brand
   const handleGenerateUnique = () => {
     const proposals = generateUniqueProposals(brandConfig);
@@ -366,8 +458,10 @@ export default function App() {
             onApplyInitialsToBrand={handleApplyInitialsToBrand}
             onGoToCreador={() => setActiveTab('creador')}
             onGoToCertificado={() => {
-              // FASE_0_2: recordar que venimos del alta antes de ir al certificado
+              // FIX_TABREGISTRO_SIN_CONSOLIDADO: redirigir a certificado en MODO PREVIEW
+              // (el certificado se renderiza y el useEffect IMG-AUTO lo captura y sube a Cloudinary)
               lastTabBeforeCertificadoRef.current = 'alta';
+              setCertificadoMode('preview');
               setActiveTab('certificado');
             }}
             onGoToDigitalizacion={() => setActiveTab('digitalizacion')}
@@ -445,9 +539,11 @@ export default function App() {
         {activeTab === 'buscador' && (
           <TabBuscador
             onLoadRecordIntoCertificate={handleLoadRecordIntoCertificate}
+            onVerCertificadoImagen={handleVerCertificadoImagen}
             onGoToCertificado={() => {
-              // FASE_0_2: recordar que venimos del buscador antes de ir al certificado
+              // FASE_0_2 + FIX_CERT_MODE: desde Buscador, redirigir a certificado en MODO PREVIEW (editable)
               lastTabBeforeCertificadoRef.current = 'buscador';
+              setCertificadoMode('preview');
               setActiveTab('certificado');
             }}
             onGoToRegistro={() => setActiveTab('alta')}
@@ -470,6 +566,7 @@ export default function App() {
             producerData={producerData}
             brandConfig={brandConfig}
             municipalConfig={municipalConfig}
+            forceConsolidatedMode={certificadoMode === 'consolidated'}
             onGoToRegistro={() => setActiveTab('alta')}
             onChangeProducerData={setProducerData}
             onBack={() => setActiveTab(lastTabBeforeCertificadoRef.current)}
@@ -511,6 +608,7 @@ export default function App() {
 
               // Resetear el ref del tab anterior
               lastTabBeforeCertificadoRef.current = 'hub';
+              setCertificadoMode('preview');
 
               // Navegar al hub principal
               setActiveTab('hub');
@@ -570,6 +668,7 @@ export default function App() {
               lastTabBeforeCertificadoRef.current = 'finanzas';
               setActiveTab('certificado');
             }}
+            onVerCertificadoImagen={handleVerCertificadoImagen}
           />
         )}
       </main>

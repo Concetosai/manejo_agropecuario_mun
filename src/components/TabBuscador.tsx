@@ -32,6 +32,7 @@ interface TabBuscadorProps {
   onLoadRecordIntoCertificate: (record: HistoricalRecord) => void;
   onGoToCertificado: () => void;
   onGoToRegistro: () => void;
+  onVerCertificadoImagen?: (folio: string, record?: any) => void;
 }
 
 // Mini Canvas renderer for table rows
@@ -80,6 +81,7 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
   onLoadRecordIntoCertificate,
   onGoToCertificado,
   onGoToRegistro,
+  onVerCertificadoImagen,
 }) => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [localFierros, setLocalFierros] = useState<HistoricalRecord[]>(() => getLocalFierros());
@@ -159,37 +161,8 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
   // Success Notice
   const [loadedNotice, setLoadedNotice] = useState<{ record: HistoricalRecord; message: string } | null>(null);
 
-  // Quick Preset Filters
-  const applyPreset = (presetName: string) => {
-    resetFilters();
-    switch (presetName) {
-      case 'local_only':
-        setFilterOnlyLocal(true);
-        break;
-      case 'irma':
-        setFilterOwner('GARCIA ORTIZ IRMA');
-        break;
-      case 'guzman':
-        setFilterOwner('Guzmán');
-        setFilterEjido('Reventadero');
-        break;
-      case 'recent':
-        setFilterDateStart('2024-01-01');
-        break;
-      case 'echado':
-        setFilterOrientation('echado');
-        break;
-      case 'canoas':
-        setFilterEjido('Canoas');
-        break;
-      case 'litigio':
-        setFilterStatus('En Litigio');
-        break;
-      default:
-        break;
-    }
-    setCurrentPage(1);
-  };
+  // FIX_REMOVE_MOCK_DONE: eliminados filtros demo con datos dummy
+  // (Irma, Guzmán, Recientes, Canoas, Echado, Litigio)
 
   const resetFilters = () => {
     setGlobalSearch('');
@@ -538,49 +511,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
               <span>⭐ Solo Fierros Locales ({localFierros.length})</span>
             </label>
 
-            <button
-              type="button"
-              onClick={() => applyPreset('irma')}
-              className="px-2.5 py-1 bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 rounded transition-colors cursor-pointer font-medium"
-            >
-              Irma García (Piloto)
-            </button>
-
-            <button
-              type="button"
-              onClick={() => applyPreset('guzman')}
-              className="px-2.5 py-1 bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 rounded transition-colors cursor-pointer"
-            >
-              {/* FIX_NO_MOCK: filtro demo removido */}
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset('recent')}
-              className="px-2.5 py-1 bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 rounded transition-colors cursor-pointer"
-            >
-              Recientes 2024–2026
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset('canoas')}
-              className="px-2.5 py-1 bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 rounded transition-colors cursor-pointer"
-            >
-              Canoas, Ver.
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset('echado')}
-              className="px-2.5 py-1 bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-700 rounded transition-colors cursor-pointer"
-            >
-              Fierros "Echados"
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset('litigio')}
-              className="px-2.5 py-1 bg-stone-100 hover:bg-red-100 hover:text-red-900 text-stone-700 rounded transition-colors cursor-pointer"
-            >
-              En Litigio
-            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1032,6 +962,7 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
         onLoadRecordIntoCertificate={(rec) => {
           handleLoadRecord(rec);
         }}
+        onVerCertificadoImagen={onVerCertificadoImagen}
         onCreatePaymentOrder={(rec) => {
           console.log('[Auditoria] Generar orden de cobro para:', rec.ownerName);
           // TODO: conectar con FinanceManager

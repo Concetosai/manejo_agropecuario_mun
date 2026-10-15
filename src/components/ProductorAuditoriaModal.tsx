@@ -10,6 +10,7 @@ import {
   DollarSign, Receipt, Clock, Check, XCircle, Sparkles,
   Eye, ExternalLink, Calendar, Hash,
   FileCheck2,
+  FileDown,
 } from 'lucide-react';
 
 interface ProductorAuditoriaModalProps {
@@ -20,6 +21,7 @@ interface ProductorAuditoriaModalProps {
   onLoadRecordIntoCertificate?: (record: HistoricalRecord) => void;
   onCreatePaymentOrder?: (record: HistoricalRecord) => void;
   onNavigateToCertificado?: () => void;
+  onVerCertificadoImagen?: (folio: string, record?: any) => void;
 }
 
 type TabId = 'imagenes' | 'vector' | 'pagos' | 'antiduplicidad';
@@ -36,6 +38,7 @@ export const ProductorAuditoriaModal: React.FC<ProductorAuditoriaModalProps> = (
   onLoadRecordIntoCertificate,
   onCreatePaymentOrder,
   onNavigateToCertificado,
+  onVerCertificadoImagen,
 }) => {
   const [activeTab, setActiveTab] = useState<TabId>('imagenes');
   const [paymentOrders, setPaymentOrders] = useState<PaymentOrder[]>([]);
@@ -91,10 +94,44 @@ export const ProductorAuditoriaModal: React.FC<ProductorAuditoriaModalProps> = (
     const pendiente = productorPagos.filter((o) => o.status === 'PENDING').reduce((s, o) => s + (o.amount || 0), 0);
     return { pagado, pendiente, total: productorPagos.length };
   }, [productorPagos]);
+  // FIX_CERTIFICADO_CACHE_LOOKUP: si el record no trae la URL del certificado,
+  // buscarla fresca en el cache local (porque el cache se actualizo despues
+  // de que el Buscador cargo su copia del record).
+  // IMPORTANTE: este useMemo debe ir ANTES del "if (!isOpen || !record) return null"
+  // para respetar la Regla de los Hooks de React.
+  const imgCertificado = useMemo(() => {
+    if (!record) return null;
+
+    const directa = (record as any).url_certificado_imagen
+      || (record as any).certificadoImagenUrl;
+    if (directa) return directa;
+
+    if (!record.folio) return null;
+    try {
+      const keys = ['panuco_fierros_db_v2', 'panuco_sheets_cache_v1'];
+      for (const key of keys) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const data = JSON.parse(raw);
+        const registros = Array.isArray(data) ? data : (data.registros || []);
+        const found = registros.find((r: any) => r.folio === record.folio);
+        if (found) {
+          const url = found.url_certificado_imagen || found.certificadoImagenUrl;
+          if (url) {
+            console.log(`[Auditoria] Certificado encontrado en cache (${key}):`, url);
+            return url;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Auditoria] Error buscando certificado en cache:', err);
+    }
+    return null;
+  }, [record, isOpen]);
 
   if (!isOpen || !record) return null;
 
-    // FASE_0_3: leer TODAS las fuentes posibles (Sheets crudo, Drive URLs, imagenes[])
+  // FASE_0_3: leer TODAS las fuentes posibles (Sheets crudo, Drive URLs, imagenes[])
   const imgIne = (record as any).ineDriveUrl
     || (record as any).url_ine
     || record.imagenes?.credencial_ine
@@ -116,13 +153,29 @@ export const ProductorAuditoriaModal: React.FC<ProductorAuditoriaModalProps> = (
     || record.extractedBrandImage
     || record.imagen_base64;
 
-  const imgFicha = (record as any).url_ficha || record.imagenes?.ficha_original;
+  // FIX_RECIBO_EVIDENCIA: recibo sellado de pago. Foto subida por el usuario (Cloudinary 08-Recibos)
+  // + PDF oficial del recibo en Drive (solo referencia, se muestra como link).
+  const _ordenesConRecibo = productorPagos.filter((o) => !!o.urlReciboCloudinary || !!o.urlReciboDrive);
+  const _ordenRecibo = _ordenesConRecibo.find((o) => o.status === 'PAID') || _ordenesConRecibo[0];
+  const imgRecibo = _ordenRecibo?.urlReciboCloudinary
+    || (record as any).url_recibo_cloudinary
+    || (record as any).reciboCloudinaryUrl
+    || (record as any).reciboImageUrl
+    || undefined;
+  const linkReciboDrive = _ordenRecibo?.urlReciboDrive
+    || (record as any).url_recibo_drive
+    || (record as any).reciboDriveUrl
+    || undefined;
+
+  
 
   const vector = record.vector_64d || record.brandVector || [];
   const checksum = record.vector_checksum || record.hash_vector || (vector.length ? computeVectorChecksum(vector) : 'SIN-VECTOR');
 
-  const imgCount = [imgIne, imgFoto, imgFirma, imgFierro, imgFicha].filter(Boolean).length;
-  const hasVector = vector.length === 64;
+  // FIX_TARJETA_CERTIFICADO_IMAGEN: incluir certificado en el conteo total (era 5, ahora 6)
+  // FIX_RECIBO_EVIDENCIA: incluir recibo de pago en el conteo total
+  const imgCount = [imgIne, imgFoto, imgFirma, imgFierro, imgCertificado, imgRecibo].filter(Boolean).length;
+  const hasVector = vector.length === 256;
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'imagenes', label: 'Imágenes', icon: <Camera className="w-4 h-4" />, badge: String(imgCount) },
@@ -271,71 +324,161 @@ export const ProductorAuditoriaModal: React.FC<ProductorAuditoriaModalProps> = (
                   </div>
                 </div>
 
-                {/* FIX_TARJETA_CERTIFICADO: Tarjeta del Certificado Oficial */}
+                {/* FIX_TARJETA_CERTIFICADO_IMAGEN: Tarjeta del Certificado Oficial con IMAGEN REAL */}
                 <div className="bg-white rounded-xl border-2 border-emerald-300 p-3 shadow-2xs sm:col-span-2 lg:col-span-2">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[11px] font-bold uppercase text-emerald-800 flex items-center gap-1.5">
                       <FileCheck2 className="w-3.5 h-3.5 text-emerald-700" />
                       Certificado Oficial (Acta + CR-80)
                     </span>
-                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                      DOCUMENTO PRINCIPAL
-                    </span>
+                    {imgCertificado ? (
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        DOCUMENTO PRINCIPAL
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                        PENDIENTE DE GENERAR
+                      </span>
+                    )}
                   </div>
-                  <div className="aspect-[16/10] bg-gradient-to-br from-emerald-50 to-amber-50 rounded-lg border border-emerald-200 overflow-hidden flex flex-col items-center justify-center gap-3 p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-16 h-16 rounded-xl bg-emerald-700 flex items-center justify-center text-white shadow-md">
-                        <FileCheck2 className="w-8 h-8" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-sm font-bold text-stone-900 font-cinzel">
-                          {record?.ownerName || 'Productor'}
-                        </p>
-                        <p className="text-[11px] text-stone-600 font-mono">
-                          Folio: {record?.folio || '—'}
-                        </p>
-                        <p className="text-[11px] text-stone-600 font-mono">
-                          REG: {record?.registrationNumber || '—'}
-                        </p>
-                      </div>
+
+                  {imgCertificado ? (
+                    // Vista con imagen del certificado
+                    <div className="aspect-[16/10] bg-stone-100 rounded-lg border border-stone-200 overflow-hidden">
+                      <img
+                        src={imgCertificado}
+                        alt={`Certificado Oficial de ${record?.ownerName || 'Productor'}`}
+                        className="w-full h-full object-contain bg-white"
+                        loading="lazy"
+                      />
                     </div>
-                    <p className="text-[10px] text-stone-500 text-center max-w-md">
-                      Documento oficial con Acta Certificada (Tamaño Carta) y Credencial Ganadera CR-80 (54 × 85.6 mm) listos para imprimir o enviar.
-                    </p>
-                  </div>
-                  {onNavigateToCertificado && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onLoadRecordIntoCertificate?.(record!);
-                        onNavigateToCertificado();
-                        onClose();
-                      }}
-                      className="mt-3 w-full px-4 py-2.5 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 text-white font-bold text-xs rounded-lg shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer ring-2 ring-emerald-400/30 active:scale-98"
-                      title="Abrir el Certificado Oficial completo con Acta y Credencial CR-80"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>Ver Certificado Completo</span>
-                      <ExternalLink className="w-3.5 h-3.5 opacity-80" />
-                    </button>
+                  ) : (
+                    // Vista sin imagen (placeholder)
+                    <div className="aspect-[16/10] bg-gradient-to-br from-emerald-50 to-amber-50 rounded-lg border border-emerald-200 overflow-hidden flex flex-col items-center justify-center gap-3 p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-16 h-16 rounded-xl bg-stone-400 flex items-center justify-center text-white shadow-md">
+                          <FileCheck2 className="w-8 h-8" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-bold text-stone-700 font-cinzel">
+                            {record?.ownerName || 'Productor'}
+                          </p>
+                          <p className="text-[11px] text-stone-500 font-mono">
+                            Folio: {record?.folio || '—'}
+                          </p>
+                          <p className="text-[11px] text-stone-500 font-mono">
+                            REG: {record?.registrationNumber || '—'}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-amber-700 text-center max-w-md font-semibold">
+                        ⚠️ El certificado aún no ha sido generado como imagen.
+                        <br />
+                        Abra el certificado y haga clic en "Descargar PDF Seguro" para generarlo.
+                      </p>
+                    </div>
                   )}
+
+                  {/* Botones */}
+                  <div className="mt-3 flex items-center gap-2">
+                    {imgCertificado && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => window.open(imgCertificado, '_blank')}
+                          className="flex-1 px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                          title="Abrir la imagen del certificado en nueva pestaña"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Ver Imagen</span>
+                        </button>
+                        <a
+                          href={imgCertificado}
+                          download={`CERTIFICADO_${record?.folio || 'SIN-FOLIO'}.jpg`}
+                          className="flex-1 px-3 py-2 bg-amber-700 hover:bg-amber-600 text-white font-bold text-xs rounded-lg shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                          title="Descargar la imagen del certificado"
+                        >
+                          <FileDown className="w-3.5 h-3.5" />
+                          <span>Descargar</span>
+                        </a>
+                      </>
+                    )}
+                    {(onVerCertificadoImagen || onNavigateToCertificado) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // FIX_VER_CERTIFICADO_NO_EDITABLE: abrir la imagen del certificado
+                          // (Cloudinary) o, si no existe, el modo consolidado (solo lectura).
+                          // Nunca abrir el setup editable desde el portafolio.
+                          if (onVerCertificadoImagen) {
+                            onVerCertificadoImagen(record!.folio, record);
+                            onClose();
+                            return;
+                          }
+                          onLoadRecordIntoCertificate?.(record!);
+                          onNavigateToCertificado?.();
+                          onClose();
+                        }}
+                        className={`px-3 py-2 bg-stone-800 hover:bg-stone-700 text-white font-bold text-xs rounded-lg shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                          imgCertificado ? '' : 'flex-1'
+                        }`}
+                        title="Abrir el Certificado Oficial completo"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>{imgCertificado ? 'Ver Completo' : 'Ver Certificado Completo'}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Ficha histórica */}
+                {/* FIX_RECIBO_EVIDENCIA: Recibo de pago (foto Cloudinary + PDF oficial Drive de referencia) */}
                 <div className="bg-white rounded-xl border border-stone-200 p-3 shadow-2xs sm:col-span-2 lg:col-span-2">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[11px] font-bold uppercase text-stone-600 flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-stone-600" />
-                      Ficha Original (Digitalización)
+                      <Receipt className="w-3.5 h-3.5 text-emerald-700" />
+                      Recibo de Pago (Sellado)
                     </span>
-                    {imgFicha ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <XCircle className="w-4 h-4 text-stone-300" />}
+                    {(imgRecibo || linkReciboDrive) ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <XCircle className="w-4 h-4 text-stone-300" />}
                   </div>
-                  <div className="aspect-[16/10] bg-stone-100 rounded-lg overflow-hidden flex items-center justify-center">
-                    {imgFicha ? (
-                      <img src={imgFicha} alt="Ficha" className="w-full h-full object-contain" />
-                    ) : (
-                      <span className="text-stone-400 text-xs">No aplica (registro de alta nueva)</span>
-                    )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-stone-500 block mb-1">Pago original (foto subida)</span>
+                      <div className="aspect-[16/10] bg-stone-100 rounded-lg overflow-hidden flex items-center justify-center border border-stone-200">
+                        {imgRecibo ? (
+                          <img src={imgRecibo} alt="Recibo de pago sellado" className="w-full h-full object-contain bg-white" loading="lazy" />
+                        ) : (
+                          <span className="text-stone-400 text-xs">Sin foto digitalizada</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col justify-center gap-2">
+                      <span className="text-[10px] font-bold uppercase text-stone-500">Documentos de referencia</span>
+                      {imgRecibo && (
+                        <a
+                          href={imgRecibo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg px-3 py-2 transition-colors cursor-pointer"
+                        >
+                          <Camera className="w-3.5 h-3.5" /> Ver foto del recibo (Cloudinary)
+                        </a>
+                      )}
+                      {linkReciboDrive ? (
+                        <a
+                          href={linkReciboDrive}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg px-3 py-2 transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Ver recibo PDF oficial (Drive)
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center gap-2 text-xs font-semibold text-stone-400 bg-stone-50 border border-stone-200 rounded-lg px-3 py-2">
+                          <Eye className="w-3.5 h-3.5" /> Sin PDF en Drive
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -639,19 +782,6 @@ export const ProductorAuditoriaModal: React.FC<ProductorAuditoriaModalProps> = (
             Folio: {record.folio} · Última actualización: {record.issueDate || '—'}
           </span>
           <div className="flex items-center gap-2">
-            {onLoadRecordIntoCertificate && (
-              <button
-                type="button"
-                onClick={() => {
-                  onLoadRecordIntoCertificate(record);
-                  onClose();
-                }}
-                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg shadow transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Ver / Cargar en Certificado</span>
-              </button>
-            )}
             <button
               type="button"
               onClick={onClose}

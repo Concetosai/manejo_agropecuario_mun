@@ -376,7 +376,7 @@ export function runVectorSimilarityAnalysis(
   hasAnyMatch: boolean;
 } {
   const sourceVec = sourceRecord.vector_64d || sourceRecord.brandVector;
-  if (!sourceVec || sourceVec.length !== 64) {
+  if (!sourceVec || sourceVec.length !== 256) {
     return {
       sourceRecord,
       hasVector: false,
@@ -395,7 +395,7 @@ export function runVectorSimilarityAnalysis(
     }
 
     const candVec = candidate.vector_64d || candidate.brandVector;
-    if (!candVec || candVec.length !== 64) {
+    if (!candVec || candVec.length !== 256) {
       continue;
     }
 
@@ -406,7 +406,7 @@ export function runVectorSimilarityAnalysis(
     let mismatchedCount = 0;
     let maxDiff = 0;
 
-    for (let i = 0; i < 64; i++) {
+    for (let i = 0; i < 256; i++) {
       const diff = Math.abs((sourceVec[i] || 0) - (candVec[i] || 0));
       diffVector.push(diff);
       if (diff > 0.3) {
