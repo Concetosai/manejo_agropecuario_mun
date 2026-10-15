@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import QRCode from 'qrcode';
+import { buildVerificationData, buildVerificationUrl } from '../utils/qrVerification';
 import { ProducerData, BrandConfig, MunicipalConfig } from '../types';
 import { renderBrandToCanvas } from '../utils/canvasRenderer';
 import { recordAuditLog } from '../utils/auditAuth';
@@ -130,27 +131,17 @@ export const TabCertificado: React.FC<TabCertificadoProps> = ({
   const [pdfProgressText, setPdfProgressText] = useState('');
   const [pdfSuccessNotice, setPdfSuccessNotice] = useState<{ filename: string; hash: string } | null>(null);
 
-  // Generate cryptographic verification payload and real QR Code
+  // P4-QR: genera un QR real que codifica la URL pública de verificación del
+  // certificado. Cualquier cámara (PC o celular) abre la página de verificación
+  // y el escáner interno lee el mismo código para abrir el expediente.
   useEffect(() => {
-    const payload = JSON.stringify({
-      emisor: 'H. Ayuntamiento Constitucional de Pánuco, Ver.',
-      folio: producerData.folio,
-      titular: producerData.fullName,
-      curp: producerData.curp,
-      predio: producerData.propertyName,
-      ejido: producerData.ejido,
-      upp: producerData.uppKey,
-      vigencia: producerData.validityRange,
-      expedicion: producerData.issueDate,
-      firmaDigital: `SHA256:PAN-${producerData.folio}-${producerData.curp.slice(0, 6)}-SEC889`,
-      verificacionOficial: `https://panuco.gob.mx/ganaderia/verificar?folio=${encodeURIComponent(
-        producerData.folio
-      )}`,
-    });
+    const verificationData = buildVerificationData(producerData);
+    const verificationUrl = buildVerificationUrl(verificationData);
 
-    QRCode.toDataURL(payload, {
+    QRCode.toDataURL(verificationUrl, {
       width: 250,
       margin: 1,
+      errorCorrectionLevel: 'M',
       color: {
         dark: '#171717',
         light: '#ffffff',
@@ -1365,6 +1356,17 @@ export const TabCertificado: React.FC<TabCertificadoProps> = ({
                       </p>
                     </div>
                   </div>
+
+                  {/* P4-QR: acceso a la vista pública de verificación (solo pantalla) */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.open(buildVerificationUrl(buildVerificationData(producerData)), '_blank')
+                    }
+                    className="no-print w-full max-w-[200px] px-3 py-1.5 text-[10px] font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Ver página pública del QR
+                  </button>
                 </div>
               </div>
 

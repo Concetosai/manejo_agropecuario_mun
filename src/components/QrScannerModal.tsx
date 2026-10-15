@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
-import { X, Camera, AlertCircle, Loader2, Upload } from 'lucide-react';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { X, Camera, AlertCircle, Loader2, Upload, RefreshCw, SwitchCamera } from 'lucide-react';
+import { extractFolioFromScan } from '../utils/qrVerification';
 
 interface QrScannerModalProps {
   isOpen: boolean;
@@ -8,11 +9,34 @@ interface QrScannerModalProps {
   onScanSuccess: (folio: string) => void;
 }
 
+interface CameraDevice {
+  id: string;
+  label: string;
+}
+
+function describeCameraError(err: any): string {
+  const name = String(err?.name || '');
+  const msg = String(err?.message || err || '');
+  const all = `${name} ${msg}`;
+  if (/NotAllowedError|Permission|denied/i.test(all)) {
+    return 'Permiso de cámara denegado. Habilite el acceso a la cámara en su navegador e intente de nuevo.';
+  }
+  if (/NotFoundError|DevicesNotFound|Requested device not found|no camera/i.test(all)) {
+    return 'No se encontró ninguna cámara conectada. Conecte una cámara o use la opción de subir una imagen del QR.';
+  }
+  if (/NotReadableError|TrackStartError|in use|busy/i.test(all)) {
+    return 'La cámara está siendo usada por otra aplicación. Ciérrela e intente de nuevo.';
+  }
+  if (/OverconstrainedError|ConstraintNotSatisfied/i.test(all)) {
+    return 'La cámara solicitada no está disponible en este dispositivo. Intente con otra cámara.';
+  }
+  return 'No se pudo iniciar la cámara. Verifique los permisos o use la opción de subir una imagen del QR.';
+}
+
 /**
- * Modal de escaneo de QR para el certificado ganadero.
- * 
- * El QR contiene un JSON con el folio del productor.
- * Al detectarlo, extrae el folio y llama a onScanSuccess(folio).
+ * P4-QR · Escáner interno de QR.
+ * Funciona con la cámara de una PC (webcam) o de un celular. Prueba primero la
+ * cámara trasera, luego la frontal y, si es necesario, la lista de dispositivos.
  */
 export const QrScannerModal: React.FC<QrScannerModalProps> = ({
   isOpen,
@@ -22,129 +46,161 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [cameras, setCameras] = useState<CameraDevice[]>([]);
+  const [cameraIndex, setCameraIndex] = useState(0);
+
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const mountedRef = useRef(true);
   const containerId = 'qr-reader-container';
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Extraer folio del texto escaneado (JSON o texto plano)
-  const extractFolio = (text: string): string | null => {
-    try {
-      // Intentar parsear como JSON
-      const parsed = JSON.parse(text);
-      if (parsed && parsed.folio) return String(parsed.folio);
-      // Si es objeto pero sin folio, buscar cualquier campo 'folio'
-      if (parsed && typeof parsed === 'object') {
-        const keys = Object.keys(parsed);
-        const folioKey = keys.find((k) => k.toLowerCase().includes('folio'));
-        if (folioKey && parsed[folioKey]) return String(parsed[folioKey]);
+  const stopScanner = async () => {
+    const s = scannerRef.current;
+    scannerRef.current = null;
+    if (s) {
+      try {
+        await s.stop();
+      } catch {
+        /* noop */
       }
-    } catch {
-      // No es JSON, intentar regex
+      try {
+        s.clear();
+      } catch {
+        /* noop */
+      }
     }
-    // Buscar patrón PAN-YYYY-XXXXX en texto plano
-    const match = text.match(/PAN-\d{4}-\d{5}/i);
-    if (match) return match[0].toUpperCase();
-    // Buscar cualquier folio que empiece con PAN
-    const match2 = text.match(/PAN[-_]?[A-Z0-9-]+/i);
-    if (match2) return match2[0].toUpperCase();
-    return null;
   };
 
-  // Callback al escanear exitosamente
   const handleQrDetected = (decodedText: string) => {
-    const folio = extractFolio(decodedText);
+    const folio = extractFolioFromScan(decodedText);
     if (folio) {
-      // Detener el scanner
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-      }
+      stopScanner();
       onScanSuccess(folio);
     } else {
-      setError('El QR no contiene un folio válido de Pánuco. Verifique que sea el certificado oficial.');
+      setError(
+        'El código escaneado no contiene un folio válido de Pánuco. Verifique que sea el certificado oficial.'
+      );
     }
   };
 
-  // Iniciar el scanner
+  const startWith = async (cameraIdOrConfig: any) => {
+    const scanner = new Html5Qrcode(containerId, {
+      verbose: false,
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+    });
+    await scanner.start(
+      cameraIdOrConfig,
+      { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+      (decodedText) => {
+        if (mountedRef.current) handleQrDetected(decodedText);
+      },
+      () => {
+        /* errores de frame: silenciosos */
+      }
+    );
+    scannerRef.current = scanner;
+  };
+
+  const startScanner = async (preferredDeviceId?: string) => {
+    setIsStarting(true);
+    setIsScanning(false);
+    setError(null);
+    await stopScanner();
+    await new Promise((r) => setTimeout(r, 120));
+    if (!mountedRef.current) return;
+
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      setError('La cámara requiere una conexión segura (HTTPS) o ejecutarse en localhost.');
+      setIsStarting(false);
+      return;
+    }
+
+    const attempts: any[] = [];
+    if (preferredDeviceId) attempts.push({ deviceId: { exact: preferredDeviceId } });
+    attempts.push({ facingMode: 'environment' });
+    attempts.push({ facingMode: 'user' });
+
+    let lastErr: any = null;
+    let started = false;
+
+    for (const cfg of attempts) {
+      try {
+        await startWith(cfg);
+        started = true;
+        break;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+
+    if (!started) {
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length) {
+          setCameras(devices.map((d) => ({ id: d.id, label: d.label })));
+          await startWith({ deviceId: { exact: devices[0].id } });
+          started = true;
+        }
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+
+    if (!mountedRef.current) return;
+    if (started) {
+      setIsScanning(true);
+      setIsStarting(false);
+    } else {
+      setError(describeCameraError(lastErr));
+      setIsStarting(false);
+    }
+  };
+
+  // Iniciar/detener scanner al abrir/cerrar
   useEffect(() => {
     if (!isOpen) return;
+    mountedRef.current = true;
 
-    let mounted = true;
-
-    const startScanner = async () => {
-      setIsStarting(true);
-      setError(null);
-
-      // Esperar a que el div esté en el DOM
-      await new Promise((r) => setTimeout(r, 100));
-
+    // Enumerar cámaras (no bloqueante) para el botón de cambio de cámara
+    (async () => {
       try {
-        const scanner = new Html5Qrcode(containerId, {
-          verbose: false,
-          formatsToSupport: [
-            // @ts-ignore
-            0, // QR_CODE
-          ],
-        });
-        scannerRef.current = scanner;
-
-        await scanner.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
-          },
-          (decodedText) => {
-            if (mounted) handleQrDetected(decodedText);
-          },
-          () => {
-            // Errores de frame (silencioso)
-          }
-        );
-
-        if (mounted) {
-          setIsScanning(true);
-          setIsStarting(false);
+        const devices = await Html5Qrcode.getCameras();
+        if (mountedRef.current && devices?.length) {
+          setCameras(devices.map((d) => ({ id: d.id, label: d.label })));
         }
-      } catch (err: any) {
-        console.warn('[QrScanner] Error al iniciar:', err);
-        if (mounted) {
-          setError(
-            'No se pudo acceder a la cámara. Verifique los permisos o use la opción de subir una imagen del QR.'
-          );
-          setIsStarting(false);
-        }
+      } catch {
+        /* noop */
       }
-    };
+    })();
 
     startScanner();
 
     return () => {
-      mounted = false;
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        scannerRef.current.clear();
-        scannerRef.current = null;
-      }
+      mountedRef.current = false;
+      stopScanner();
       setIsScanning(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // Subir imagen del QR como alternativa
+  const switchCamera = () => {
+    if (cameras.length < 2) return;
+    const next = (cameraIndex + 1) % cameras.length;
+    setCameraIndex(next);
+    startScanner(cameras[next].id);
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setError(null);
-
     try {
-      if (scannerRef.current) {
-        await scannerRef.current.stop().catch(() => {});
-      }
+      await stopScanner();
       const scanner = new Html5Qrcode(containerId);
       const result = await scanner.scanFile(file, false);
       handleQrDetected(result);
-    } catch (err: any) {
+    } catch (err) {
       console.warn('[QrScanner] Error al escanear archivo:', err);
       setError('No se pudo leer el QR desde la imagen. Intente con otra imagen más nítida.');
     } finally {
@@ -201,6 +257,28 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
             )}
           </div>
 
+          {/* Controles de cámara */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => startScanner()}
+              className="flex-1 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-300 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Reintentar cámara
+            </button>
+            {cameras.length > 1 && (
+              <button
+                type="button"
+                onClick={switchCamera}
+                className="flex-1 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-300 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <SwitchCamera className="w-3.5 h-3.5" />
+                Cambiar cámara
+              </button>
+            )}
+          </div>
+
           {/* Error */}
           {error && (
             <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl flex items-start gap-2 text-xs text-rose-900">
@@ -212,7 +290,9 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
           {/* Instrucciones */}
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 leading-relaxed">
             <strong className="block mb-1">📋 ¿Cómo escanear?</strong>
-            Apunte la cámara al QR del certificado impreso. El sistema detectará el folio automáticamente y abrirá el portafolio del productor.
+            Apunte la cámara al QR del certificado. El sistema detectará el folio automáticamente y
+            abrirá el expediente del productor. En una PC funciona con su webcam; en un celular, con
+            la cámara trasera.
           </div>
 
           {/* Alternativa: subir imagen */}
