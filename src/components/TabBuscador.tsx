@@ -77,6 +77,22 @@ const TableBrandCanvas: React.FC<{
   );
 };
 
+// FIX_FIERRO_BUSCADOR: resuelve la imagen real del fierro (foto Cloudinary digitalizada)
+// usando la misma prioridad que el Portafolio de Evidencias y el Certificado. Evita
+// mostrar el render vectorial genérico cuando existe la fotografía real del fierro.
+function resolveFierroThumbnail(record: HistoricalRecord): string | undefined {
+  const r = record as any;
+  return (
+    r.url_fierro ||
+    record.fierroImageUrl ||
+    r.url_miniatura_fierro ||
+    record.imagenes?.fierro_digitalizado ||
+    record.extractedBrandImage ||
+    record.imagen_base64 ||
+    undefined
+  );
+}
+
 export const TabBuscador: React.FC<TabBuscadorProps> = ({
   onLoadRecordIntoCertificate,
   onGoToCertificado,
@@ -784,11 +800,11 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
                   <tr key={record.id} className="hover:bg-amber-50/40 transition-colors">
                     <td className="py-2 px-3 text-center">
                       <div className="flex flex-col items-center justify-center gap-1">
-                        {record.extractedBrandImage || record.imagen_base64 ? (
+                        {resolveFierroThumbnail(record) ? (
                           <div className="w-12 h-12 bg-white border border-stone-300 rounded flex items-center justify-center p-0.5 shrink-0 shadow-2xs overflow-hidden">
                             <img
-                              src={record.extractedBrandImage || record.imagen_base64}
-                              alt="Fierro Físico"
+                              src={resolveFierroThumbnail(record)}
+                              alt="Fierro FA-sico"
                               className="w-full h-full object-contain"
                             />
                           </div>
