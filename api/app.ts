@@ -20,10 +20,27 @@ dotenv.config();
 // (PaddleOCR en LAN, Tesseract WASM) no funcionan en la nube.
 const IS_VERCEL = Boolean(process.env.VERCEL);
 
+// Presupuesto de tiempo para los motores Gemini en las rutas OCR: evita que la
+// función serverless exceda el límite de 60s de Vercel y devuelva un 504.
+const GEMINI_CALL_TIMEOUT_MS = 30000;
+const GEMINI_OCR_BUDGET_MS = 52000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_resolve, reject) =>
+      setTimeout(() => reject(new Error(label + ' excedió ' + ms + ' ms')), ms)
+    ),
+  ]);
+}
+
 // =========================================================================
 // FUNCIÓN AUXILIAR: Llamar al microservicio PaddleOCR (teclingo-server)
 // =========================================================================
 async function callPaddleOCRService(imageBase64: string): Promise<{ full_text: string; lines: any[] } | null> {
+  if (IS_VERCEL) {
+    return null;
+  }
   try {
     const paddleUrl = process.env.PADDLE_OCR_URL || 'http://192.168.1.13:8001/ocr';
     const response = await fetch(paddleUrl, {
@@ -578,6 +595,9 @@ Responde ÚNICAMENTE en JSON con esta estructura:
     // Especializado en INEs mexicanas, gratuito, rápido.
     // ─────────────────────────────────────────────────────────────
     try {
+      if (IS_VERCEL) {
+        throw new Error('PaddleOCR (LAN) omitido en Vercel');
+      }
       const paddleUrl = process.env.PADDLE_OCR_URL || 'http://192.168.1.13:8001/ocr';
       console.log('[OCR-Cascade] Motor 1: Intentando PaddleOCR en ' + paddleUrl);
 
@@ -664,9 +684,14 @@ Devuelve EXCLUSIVAMENTE el JSON válido.`;
 
       const candidateModels = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
 
+      const geminiStart = Date.now();
       for (const model of candidateModels) {
+        if (Date.now() - geminiStart + GEMINI_CALL_TIMEOUT_MS > GEMINI_OCR_BUDGET_MS) {
+          console.warn('[OCR-Cascade] Motor 2: presupuesto de tiempo agotado, se detiene la búsqueda de modelos');
+          break;
+        }
         try {
-          const response = await ai.models.generateContent({
+          const responsePromise: Promise<any> = ai.models.generateContent({
             model,
             contents: [
               { inlineData: { mimeType, data: cleanBase64 } },
@@ -674,6 +699,7 @@ Devuelve EXCLUSIVAMENTE el JSON válido.`;
             ],
             config: { responseMimeType: 'application/json', temperature: 0.1 },
           });
+          const response = await withTimeout(responsePromise, GEMINI_CALL_TIMEOUT_MS, 'Gemini (' + model + ')');
 
           const rawText = response.text || '{}';
           let parsedData: any = {};
@@ -954,9 +980,14 @@ Responde ÚNICAMENTE en JSON con la siguiente estructura:
       if (ai) {
         const candidateModels = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
 
+        const geminiStart = Date.now();
         for (const model of candidateModels) {
+          if (Date.now() - geminiStart + GEMINI_CALL_TIMEOUT_MS > GEMINI_OCR_BUDGET_MS) {
+            console.warn('[OCR-Cascade] Motor 2 (histórico): presupuesto de tiempo agotado');
+            break;
+          }
           try {
-            const response = await ai.models.generateContent({
+            const responsePromise: Promise<any> = ai.models.generateContent({
               model,
               contents: [
                 {
@@ -972,6 +1003,7 @@ Responde ÚNICAMENTE en JSON con la siguiente estructura:
                 temperature: 0.1,
               },
             });
+            const response = await withTimeout(responsePromise, GEMINI_CALL_TIMEOUT_MS, 'Gemini histórico (' + model + ')');
 
             const rawText = response.text || '{}';
             let parsedResult: any = {};

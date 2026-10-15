@@ -384,9 +384,14 @@ export const IneScanner: React.FC<IneScannerProps> = ({
         }),
       });
 
-      const result = await response.json();
+      let result: any = null;
+      try {
+        result = await response.json();
+      } catch {
+        result = null;
+      }
 
-      if (result.success && result.data) {
+      if (response.ok && result && result.success && result.data) {
         setRawCapturedImage(imageBase64);
         setImagePreview(imageBase64);
         setRotationDegrees(0);
@@ -396,9 +401,14 @@ export const IneScanner: React.FC<IneScannerProps> = ({
           scannedImagePreview: imageBase64,
         });
         setMode('verifying');
+      } else if (!response.ok && !result) {
+        setErrorMessage(
+          'El servicio de lectura está saturado o no disponible en este momento. Espere unos segundos e intente de nuevo.'
+        );
+        setMode('alert');
       } else {
         const errorDesc =
-          result.error ||
+          (result && result.error) ||
           'No se pudo transcribir la credencial. Verifique que la imagen esté nítida y orientada correctamente (horizontal o vertical).';
         setErrorMessage(errorDesc);
         setMode('alert');

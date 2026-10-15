@@ -20,3 +20,5 @@ repomix-output.xml
 *.bak
 *.bak_*
 *.bak-*
+
+.vercel
