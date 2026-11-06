@@ -64,6 +64,9 @@ export interface GoogleRegistro {
   url_ficha?: string;
   url_fierro?: string;
   url_certificado?: string;
+  url_certificado_imagen?: string;
+  url_miniatura_fierro?: string;
+  url_reporte?: string;
   url_foto_titular?: string;
   url_firma?: string;
   // Metadata
@@ -74,6 +77,8 @@ export interface GoogleRegistro {
   fecha_baja?: string;
   motivo_baja?: string;
   operador_baja?: string;
+  // FIX_QR_CODE: URL de verificacion publica codificada en el QR del certificado
+  qr_code?: string;
 }
 
 export interface GoogleApiResponse {
@@ -827,6 +832,85 @@ export async function actualizarUrlCertificadoImagen(
     };
   } catch (err: any) {
     console.error('[Sheets] Error actualizando URL del certificado:', err);
+    return { success: false, error: err?.message || 'Error desconocido' };
+  }
+}
+
+// ============================================================================
+// v4.3 · CHECKLIST DE REQUISITOS + HISTORIAL DE REVALIDACIONES
+// ============================================================================
+
+/**
+ * Guarda el checklist de requisitos marcados por el operador en Sheets.
+ */
+export async function guardarChecklistEnSheet(params: {
+  folio: string;
+  tramite: string;
+  requisitos_marcados: string[];
+  total_criticos: number;
+  operador: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const result = await callGoogleApi('guardarChecklistRequisitos', 'POST', {
+      data: {
+        folio: params.folio,
+        tramite: params.tramite,
+        requisitos_marcados: params.requisitos_marcados,
+        total_criticos: params.total_criticos,
+        operador: params.operador,
+      },
+    });
+
+    if (result && result.success) {
+      console.log('%c[Sheets] Checklist guardado:', 'color: #22c55e', params.folio, params.tramite);
+      return { success: true };
+    }
+
+    return {
+      success: false,
+      error: (result && result.error) || 'Respuesta inválida',
+    };
+  } catch (err: any) {
+    console.error('[Sheets] Error guardando checklist:', err);
+    return { success: false, error: err?.message || 'Error desconocido' };
+  }
+}
+
+/**
+ * Registra una nueva revalidación en el historial (hoja REVALIDACIONES).
+ */
+export async function registrarRevalidacionHistorial(params: {
+  folio_original: string;
+  vigencia_anterior: string;
+  vigencia_nueva: string;
+  operador: string;
+  notas?: string;
+}): Promise<{ success: boolean; folio_revalidacion?: string; error?: string }> {
+  try {
+    const result = await callGoogleApi('registrarRevalidacionHistorial', 'POST', {
+      data: {
+        folio_original: params.folio_original,
+        vigencia_anterior: params.vigencia_anterior,
+        vigencia_nueva: params.vigencia_nueva,
+        operador: params.operador,
+        notas: params.notas || '',
+      },
+    });
+
+    if (result && result.success) {
+      console.log('%c[Sheets] Revalidación registrada:', 'color: #22c55e', (result as any).folio_revalidacion);
+      return {
+        success: true,
+        folio_revalidacion: (result as any).folio_revalidacion,
+      };
+    }
+
+    return {
+      success: false,
+      error: (result && result.error) || 'Respuesta inválida',
+    };
+  } catch (err: any) {
+    console.error('[Sheets] Error registrando revalidación:', err);
     return { success: false, error: err?.message || 'Error desconocido' };
   }
 }

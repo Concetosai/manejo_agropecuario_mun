@@ -1,5 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { HistoricalRecord } from '../types';
+import { PasePreCertificadoModal } from './PasePreCertificadoModal';
+import { PasePreCertificadoDocumento } from './PasePreCertificado';
+import { emitirPasePreCertificado, actualizarUrlDocumentoPase } from '../services/paseService';
+import { subirImagenACloudinary } from '../services/cloudinaryService';
+import { captureElementSafe } from '../utils/captureSafe';
+import { getDiasVigenciaPreCertificado } from '../utils/preferences';
+import { getCurrentUser } from '../utils/auditAuth';
 import {
   calculateVectorCosineSimilarity,
   computeVectorChecksum,
@@ -59,6 +66,10 @@ export const AntiduplicidadModal: React.FC<AntiduplicidadModalProps> = ({
   onAcceptAndContinue,
 }) => {
   const [selectedMatch, setSelectedMatch] = useState<MatchResult | null>(null);
+  const [showPaseModal, setShowPaseModal] = useState(false);
+  const [isEmittingPase, setIsEmittingPase] = useState(false);
+  const [paseEmitido, setPaseEmitido] = useState<{ folio: string; url?: string } | null>(null);
+  const pasePreviewRef = React.useRef<HTMLDivElement>(null);
 
   const analysis = useMemo(() => {
     if (!newVector || newVector.length !== 256) {
@@ -206,16 +217,91 @@ export const AntiduplicidadModal: React.FC<AntiduplicidadModalProps> = ({
 
   const handleAccept = () => {
     if (!config.canEmit) return;
+    setShowPaseModal(true);
+  };
 
-    const advertencia = config.showAdvertencia
-      ? {
-          nivel: (config as any).nivelAdvertencia || 'LOW',
-          similarA: analysis.matches[0]?.record.folio,
-          similitudPct: analysis.maxSimilarity,
+  const handleConfirmarPase = async (datos: {
+    solicitante_nombre: string;
+    solicitante_telefono: string;
+    solicitante_curp?: string;
+    solicitante_rfc?: string;
+    solicitante_ejido?: string;
+    solicitante_municipio?: string;
+    solicitante_notas?: string;
+  }) => {
+    setIsEmittingPase(true);
+    try {
+      const currentUser = getCurrentUser();
+      const dias = getDiasVigenciaPreCertificado();
+
+      let fierroUrl = newImageSrc;
+      if (newImageSrc.startsWith('data:')) {
+        const upload = await subirImagenACloudinary(newImageSrc, 'FIERRO_PASE_' + Date.now() + '.jpg', '08-Pases');
+        if (upload.success && upload.url) fierroUrl = upload.url;
+      }
+
+      const result = await emitirPasePreCertificado({
+        checksum_vector: newChecksum,
+        vector_64d: newVector,
+        fierro_image_url: fierroUrl,
+        solicitante_nombre: datos.solicitante_nombre,
+        solicitante_telefono: datos.solicitante_telefono,
+        solicitante_curp: datos.solicitante_curp,
+        solicitante_rfc: datos.solicitante_rfc,
+        solicitante_ejido: datos.solicitante_ejido,
+        solicitante_municipio: datos.solicitante_municipio,
+        solicitante_notas: datos.solicitante_notas,
+        emitido_por: (currentUser && currentUser.fullName) ? currentUser.fullName : 'SISTEMA',
+      });
+
+      if (!result.success || !result.pase) {
+        alert('No se pudo emitir el pase: ' + (result.error || 'Error desconocido'));
+        setIsEmittingPase(false);
+        return;
+      }
+
+      // ✅ PRIMERO: Mostrar toast INMEDIATAMENTE
+      setPaseEmitido({ folio: result.pase.folio_pase, url: undefined });
+      setShowPaseModal(false);
+      setIsEmittingPase(false);
+      console.log('%c[Pase] ✅ Emitido: ' + result.pase.folio_pase, 'color: #22c55e; font-weight: bold');
+
+      // ✅ DESPUÉS: Generar PNG en segundo plano (no bloquea al usuario)
+      const folioPase = result.pase.folio_pase;
+      setTimeout(async () => {
+        try {
+          const paseDiv = pasePreviewRef.current;
+          if (paseDiv) {
+            await new Promise(r => setTimeout(r, 300));
+            const canvas = await captureElementSafe(paseDiv, { backgroundColor: '#faf7ef' });
+            const jpgBase64 = canvas.toDataURL('image/jpeg', 0.9);
+            const uploadPase = await subirImagenACloudinary(
+              jpgBase64,
+              'PASE_' + folioPase + '_' + Date.now() + '.jpg',
+              '08-Pases'
+            );
+            if (uploadPase.success && uploadPase.url) {
+              setPaseEmitido((prev) => prev ? { ...prev, url: uploadPase.url } : null);
+              console.log('%c[Pase] ✅ PNG subido: ' + uploadPase.url, 'color: #22c55e');
+
+              // FASE_1_PASE: Persistir la URL del documento en Sheets
+              const persistOk = await actualizarUrlDocumentoPase(folioPase, uploadPase.url);
+              if (persistOk) {
+                console.log('%c[Pase] ✅ URL del documento persistida en Sheets', 'color: #22c55e; font-weight: bold');
+              } else {
+                console.warn('[Pase] ⚠️ No se pudo persistir la URL del documento en Sheets');
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('[Pase] ⚠️ No se pudo generar el PNG:', err);
         }
-      : undefined;
-
-    onAcceptAndContinue(advertencia);
+      }, 500);
+    } catch (err: any) {
+      console.error('[Pase] Error:', err);
+      alert('Error emitiendo el pase: ' + (err && err.message ? err.message : 'Error desconocido'));
+      setIsEmittingPase(false);
+    }
   };
 
   return (
@@ -517,6 +603,57 @@ export const AntiduplicidadModal: React.FC<AntiduplicidadModalProps> = ({
           </div>
         </div>
       </div>
+
+      {showPaseModal && (
+        <PasePreCertificadoModal
+          isOpen={showPaseModal}
+          onClose={() => setShowPaseModal(false)}
+          onConfirm={handleConfirmarPase}
+          checksumVector={newChecksum}
+          diasVigencia={getDiasVigenciaPreCertificado()}
+        />
+      )}
+
+      <div style={{ position: 'absolute', left: '-99999px', top: 0 }}>
+        <div ref={pasePreviewRef}>
+          <PasePreCertificadoDocumento
+            pase={{
+              id: 'preview',
+              folio_pase: paseEmitido?.folio || 'PRE-PAN-2026-00000',
+              checksum_vector: newChecksum,
+              vector_64d: newVector,
+              fierro_image_url: newImageSrc,
+              solicitante_nombre: 'SOLICITANTE',
+              solicitante_telefono: '0000000000',
+              fecha_emision: new Date().toISOString(),
+              fecha_vencimiento: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+              dias_vigencia: getDiasVigenciaPreCertificado(),
+              estado: 'RESERVADO',
+              emitido_por: 'SISTEMA',
+              emitido_en: new Date().toISOString(),
+            }}
+            fierroImageUrl={newImageSrc}
+          />
+        </div>
+      </div>
+
+      {paseEmitido && (
+        <div className="fixed bottom-4 right-4 z-[70] bg-emerald-700 text-white p-4 rounded-xl shadow-2xl max-w-sm">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-bold text-sm">Pase emitido exitosamente</p>
+              <p className="text-xs mt-1 font-mono">{paseEmitido.folio}</p>
+              {paseEmitido.url && (
+                <a href={paseEmitido.url} target="_blank" rel="noopener noreferrer" className="text-xs underline mt-2 block">
+                  Ver documento del pase
+                </a>
+              )}
+            </div>
+            <button type="button" onClick={() => setPaseEmitido(null)} className="text-white/70 hover:text-white">×</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

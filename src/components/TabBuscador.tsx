@@ -78,8 +78,6 @@ const TableBrandCanvas: React.FC<{
 };
 
 // FIX_FIERRO_BUSCADOR: resuelve la imagen real del fierro (foto Cloudinary digitalizada)
-// usando la misma prioridad que el Portafolio de Evidencias y el Certificado. Evita
-// mostrar el render vectorial genérico cuando existe la fotografía real del fierro.
 function resolveFierroThumbnail(record: HistoricalRecord): string | undefined {
   const r = record as any;
   return (
@@ -102,7 +100,12 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
   const [refreshKey, setRefreshKey] = useState(0);
   const [localFierros, setLocalFierros] = useState<HistoricalRecord[]>(() => getLocalFierros());
 
-  // Escuchar eventos de cambios en almacenamiento local para actualización reactiva
+  // 🔥 FIX: Ref al input del buscador global (para scroll + focus)
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  // 🔥 FIX: Folio resaltado después de seleccionar desde el modal (para animación)
+  const [highlightedFolio, setHighlightedFolio] = useState<string | null>(null);
+
   useEffect(() => {
     const handleStorageUpdate = () => {
       setLocalFierros(getLocalFierros());
@@ -116,7 +119,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
     };
   }, []);
 
-  // Fusión de Base de Datos: Los fierros locales se anteponen con máxima prioridad
   const combinedDatabase = useMemo(() => {
     const municipalDb = getMunicipalDatabase();
     const localIdSet = new Set(localFierros.map((r) => String(r.id || '').toLowerCase()));
@@ -139,10 +141,8 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
     }
   }, []);
 
-  // 1. Global Reactive Search Input
   const [globalSearch, setGlobalSearch] = useState('');
 
-  // 2. Advanced Combinable Filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(true);
   const [filterOnlyLocal, setFilterOnlyLocal] = useState(false);
   const [filterOwner, setFilterOwner] = useState('');
@@ -157,11 +157,9 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
   const [filterOrientation, setFilterOrientation] = useState<'ALL' | BrandOrientation>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
-  // Vector Comparison Modal State
   const [comparisonSourceRecord, setComparisonSourceRecord] = useState<HistoricalRecord | null>(null);
   const [showComparisonModal, setShowComparisonModal] = useState(false);
 
-  // FIX_AUDITORIA_MODAL: estado del modal de auditoria completa por productor
   const [auditoriaRecord, setAuditoriaRecord] = useState<HistoricalRecord | null>(null);
   const [showQrScanner, setShowQrScanner] = useState<boolean>(false);
 
@@ -170,15 +168,10 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
     setShowComparisonModal(true);
   };
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
 
-  // Success Notice
   const [loadedNotice, setLoadedNotice] = useState<{ record: HistoricalRecord; message: string } | null>(null);
-
-  // FIX_REMOVE_MOCK_DONE: eliminados filtros demo con datos dummy
-  // (Irma, Guzmán, Recientes, Canoas, Echado, Litigio)
 
   const resetFilters = () => {
     setGlobalSearch('');
@@ -212,7 +205,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
     filterOrientation !== 'ALL' ||
     filterStatus !== 'ALL';
 
-  // Multi-criteria filter engine
   const filteredRecords = useMemo(() => {
     const qGlobal = globalSearch.trim().toLowerCase();
     const qOwner = filterOwner.trim().toLowerCase();
@@ -222,12 +214,10 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
     const qInitials = filterInitials.trim().toUpperCase();
 
     return database.filter((rec) => {
-      // 0. Filtro exclusivo: Solo Fierros Locales (Digitalizados)
       if (filterOnlyLocal && !rec.isLocal && !rec.isHistoricalDigitized) {
         return false;
       }
 
-      // 1. Global search matches any field
       if (qGlobal) {
         const matchesGlobal =
           String(rec.ownerName || '').toLowerCase().includes(qGlobal) ||
@@ -238,46 +228,22 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
           String(rec.uppKey || '').toLowerCase().includes(qGlobal) ||
           String(rec.curp || '').toLowerCase().includes(qGlobal) ||
           String(rec.rfc || '').toLowerCase().includes(qGlobal) ||
-          (rec.phone && rec.phone.includes(qGlobal)) ||
+          (rec.phone && String(rec.phone).toLowerCase().includes(qGlobal)) ||
           String(rec.initials || '').toUpperCase().includes(qGlobal.toUpperCase()) ||
-          rec.issueDate.includes(qGlobal) ||
-          String(rec.year).includes(qGlobal);
+          String(rec.issueDate || '').includes(qGlobal) ||
+          String(rec.year || '').includes(qGlobal);
 
         if (!matchesGlobal) return false;
       }
 
-      // 2. Specific Owner
-      if (qOwner && !String(rec.ownerName || '').toLowerCase().includes(qOwner)) {
-        return false;
-      }
+      if (qOwner && !String(rec.ownerName || '').toLowerCase().includes(qOwner)) return false;
+      if (qFolio && !String(rec.folio || '').toLowerCase().includes(qFolio)) return false;
+      if (qProp && !String(rec.propertyName || '').toLowerCase().includes(qProp)) return false;
+      if (filterEjido !== 'ALL' && rec.ejido !== filterEjido) return false;
+      if (filterYear !== 'ALL' && String(rec.year) !== filterYear) return false;
+      if (filterDateStart && rec.issueDate < filterDateStart) return false;
+      if (filterDateEnd && rec.issueDate > filterDateEnd) return false;
 
-      // 3. Specific Folio
-      if (qFolio && !String(rec.folio || '').toLowerCase().includes(qFolio)) {
-        return false;
-      }
-
-      // 4. Specific Property
-      if (qProp && !String(rec.propertyName || '').toLowerCase().includes(qProp)) {
-        return false;
-      }
-
-      // 5. Ejido
-      if (filterEjido !== 'ALL' && rec.ejido !== filterEjido) {
-        return false;
-      }
-
-      // 6. Date Range & Year
-      if (filterYear !== 'ALL' && String(rec.year) !== filterYear) {
-        return false;
-      }
-      if (filterDateStart && rec.issueDate < filterDateStart) {
-        return false;
-      }
-      if (filterDateEnd && rec.issueDate > filterDateEnd) {
-        return false;
-      }
-
-      // 7. UPP / CURP / RFC
       if (qUpp) {
         const matchUpp =
           String(rec.uppKey || '').toLowerCase().includes(qUpp) ||
@@ -286,20 +252,9 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
         if (!matchUpp) return false;
       }
 
-      // 8. Initials
-      if (qInitials && !String(rec.initials || '').toUpperCase().includes(qInitials)) {
-        return false;
-      }
-
-      // 9. Orientation
-      if (filterOrientation !== 'ALL' && rec.orientation !== filterOrientation) {
-        return false;
-      }
-
-      // 10. Status
-      if (filterStatus !== 'ALL' && rec.status !== filterStatus) {
-        return false;
-      }
+      if (qInitials && !String(rec.initials || '').toUpperCase().includes(qInitials)) return false;
+      if (filterOrientation !== 'ALL' && rec.orientation !== filterOrientation) return false;
+      if (filterStatus !== 'ALL' && rec.status !== filterStatus) return false;
 
       return true;
     });
@@ -326,9 +281,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
     return filteredRecords.slice(start, start + pageSize);
   }, [filteredRecords, currentPage, pageSize]);
 
-  // Action: "Ver / Cargar en Certificado"
-  
-  // P4-QR: Al escanear QR, buscar el registro por folio y abrir el portafolio
   const handleQrScanSuccess = (folio: string) => {
     setShowQrScanner(false);
     const found = combinedDatabase.find(
@@ -361,6 +313,38 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
       record,
       message: `¡Registro Folio #${record.folio} cargado exitosamente! Los datos y el fierro han sido transferidos al Certificado Oficial y al Formulario Municipal.`,
     });
+  };
+
+  // 🔥 FIX_NUEVO: selecciona un registro (desde el modal de comparación) y lo
+  // coloca en el buscador global + filtro de folio, cierra el modal y hace scroll.
+  const handleSelectFromComparison = (record: HistoricalRecord) => {
+    // 1. Cargar en el certificado (para reimpresión / portafolio)
+    handleLoadRecord(record);
+
+    // 2. Rellenar el buscador principal con el folio
+    setGlobalSearch(record.folio || '');
+    setFilterFolio(record.folio || '');
+
+    // 3. Ir a la primera página para que se vea el resultado
+    setCurrentPage(1);
+
+    // 4. Resaltar temporalmente la fila seleccionada (3 seg)
+    setHighlightedFolio(record.folio || null);
+
+    // 5. Cerrar el modal de comparación
+    setShowComparisonModal(false);
+    setComparisonSourceRecord(null);
+
+    // 6. Auto-limpiar el highlight a los 3.5 segundos
+    setTimeout(() => {
+      setHighlightedFolio(null);
+    }, 3500);
+
+    // 7. Scroll suave + focus al input del buscador
+    setTimeout(() => {
+      searchInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      searchInputRef.current?.focus();
+    }, 120);
   };
 
   const handleExportSearchResults = () => {
@@ -451,7 +435,7 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
         </div>
       )}
 
-            {/* P4-QR: RECUADRO GRANDE DE ESCANEO QR */}
+      {/* P4-QR: RECUADRO GRANDE DE ESCANEO QR */}
       <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-2xl p-5 sm:p-6 shadow-lg mb-6 border-2 border-amber-700">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
@@ -480,11 +464,13 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
           </button>
         </div>
       </div>
-{/* 1. GLOBAL SEARCH BAR (Búsqueda Reactiva en Tiempo Real) */}
+
+      {/* 1. GLOBAL SEARCH BAR */}
       <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm mb-6">
         <div className="relative mb-3">
           <Search className="w-5 h-5 text-amber-600 absolute left-4 top-3.5" />
           <input
+            ref={searchInputRef}
             type="text"
             value={globalSearch}
             onChange={(e) => {
@@ -505,7 +491,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
           )}
         </div>
 
-        {/* Quick Filter Presets and Toggle */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="text-stone-500 font-semibold flex items-center gap-1">
@@ -513,7 +498,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
               Filtros Rápidos:
             </span>
 
-            {/* Checkbox Requerido: Solo Fierros Locales */}
             <label className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-lg text-xs font-bold cursor-pointer hover:bg-emerald-100 transition-colors shadow-2xs select-none">
               <input
                 type="checkbox"
@@ -526,7 +510,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
               />
               <span>⭐ Solo Fierros Locales ({localFierros.length})</span>
             </label>
-
           </div>
 
           <div className="flex items-center gap-2">
@@ -556,10 +539,9 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
           </div>
         </div>
 
-        {/* 2. ADVANCED COMBINABLE FILTERS PANEL */}
+        {/* ADVANCED FILTERS */}
         {showAdvancedFilters && (
           <div className="mt-5 pt-4 border-t border-stone-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-stone-50/70 p-4 rounded-xl border">
-            {/* Filter 1: Propietario */}
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-700 mb-1">
                 Nombre del Productor
@@ -576,7 +558,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
               />
             </div>
 
-            {/* Filter 2: Folio */}
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-700 mb-1">
                 Folio / Registro Municipal
@@ -593,7 +574,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
               />
             </div>
 
-            {/* Filter 3: Predio / Rancho */}
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-700 mb-1">
                 Nombre del Predio / Rancho
@@ -610,7 +590,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
               />
             </div>
 
-            {/* Filter 4: Ejido */}
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-700 mb-1">
                 Ejido / Congregación
@@ -632,7 +611,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
               </select>
             </div>
 
-            {/* Filter 5: Rango de Fechas */}
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-700 mb-1">
                 Fecha Inicio Expedición
@@ -663,7 +641,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
               />
             </div>
 
-            {/* Filter 6: Clave UPP / CURP */}
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-700 mb-1">
                 Clave UPP, CURP o RFC
@@ -680,7 +657,6 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
               />
             </div>
 
-            {/* Filter 7: Iniciales o Estilo de Fierro */}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-700 mb-1">
@@ -761,7 +737,7 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
         </div>
       </div>
 
-      {/* 4. RESULTS TABLE (Interactive Data Table) */}
+      {/* 4. RESULTS TABLE */}
       <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm mb-6">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -796,121 +772,130 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
                   </td>
                 </tr>
               ) : (
-                paginatedRecords.map((record) => (
-                  <tr key={record.id} className="hover:bg-amber-50/40 transition-colors">
-                    <td className="py-2 px-3 text-center">
-                      <div className="flex flex-col items-center justify-center gap-1">
-                        {resolveFierroThumbnail(record) ? (
-                          <div className="w-12 h-12 bg-white border border-stone-300 rounded flex items-center justify-center p-0.5 shrink-0 shadow-2xs overflow-hidden">
-                            <img
-                              src={resolveFierroThumbnail(record)}
-                              alt="Fierro FA-sico"
-                              className="w-full h-full object-contain"
+                paginatedRecords.map((record) => {
+                  const isHighlighted = highlightedFolio && record.folio === highlightedFolio;
+                  return (
+                    <tr
+                      key={record.id}
+                      className={`transition-all duration-500 ${
+                        isHighlighted
+                          ? 'bg-amber-200/70 ring-2 ring-amber-500 ring-inset'
+                          : 'hover:bg-amber-50/40'
+                      }`}
+                    >
+                      <td className="py-2 px-3 text-center">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          {resolveFierroThumbnail(record) ? (
+                            <div className="w-12 h-12 bg-white border border-stone-300 rounded flex items-center justify-center p-0.5 shrink-0 shadow-2xs overflow-hidden">
+                              <img
+                                src={resolveFierroThumbnail(record)}
+                                alt="Fierro FA-sico"
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                          ) : (
+                            <TableBrandCanvas
+                              initials={record.initials && !/\d{5,}/.test(record.initials) ? record.initials : 'S/F'}
+                              topSymbol={record.topSymbol}
+                              bottomSymbol={record.bottomSymbol}
+                              orientation={record.orientation}
                             />
+                          )}
+                          <span className="text-[10px] font-mono font-bold text-amber-900 leading-none">
+                            {record.registrationNumber || record.folio || `[ ${record.initials} ]`}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="py-2.5 px-3 font-mono-data whitespace-nowrap">
+                        <span className="font-bold text-stone-900 block text-xs">{record.folio}</span>
+                        <span className="block text-[10px] text-amber-800 font-mono font-bold">{record.registrationNumber}</span>
+                      </td>
+
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-stone-900 block">{record.ownerName}</span>
+                          {record.isLocal && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-2xs">
+                              ⭐ Local / Histórico
+                            </span>
+                          )}
+                        </div>
+                        {record.curp ? (
+                          <span className="text-[10px] text-stone-600 font-mono-data block">CURP: {record.curp}</span>
+                        ) : null}
+                        {record.phone ? (
+                          <span className="text-[10px] text-stone-400 font-mono-data block">Tel: {record.phone}</span>
+                        ) : null}
+                      </td>
+
+                      <td className="py-2.5 px-3">
+                        <span className="font-medium text-stone-800 block">{record.propertyName}</span>
+                        <span className="text-stone-500 text-[11px]">
+                          {record.ejido}, Pánuco ({record.surfaceHectares} Ha)
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3 whitespace-nowrap text-stone-600 font-mono-data">
+                        {record.issueDate}
+                      </td>
+
+                      <td className="py-2.5 px-3 font-mono-data whitespace-nowrap text-stone-700">
+                        <span className="font-semibold text-xs">{record.uppKey}</span>
+                        <span className="block text-[10px] text-stone-400 font-sans">
+                          {record.cattleCount} {record.species}
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        {record.vector_64d || record.brandVector ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="font-mono text-[10px] font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">
+                              {record.hash_vector || computeVectorChecksum(record.vector_64d || record.brandVector || [])}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCompareSimilarity(record)}
+                              className="px-2.5 py-1 text-[11px] font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 rounded shadow-2xs transition-colors inline-flex items-center gap-1 cursor-pointer"
+                              title="Comparar vector 64D contra los demás fierros en el padrón"
+                            >
+                              <Sparkles className="w-3 h-3 text-amber-900" />
+                              <span>Comparar Similitud</span>
+                            </button>
                           </div>
                         ) : (
-                          <TableBrandCanvas
-                            initials={record.initials && !/\d{5,}/.test(record.initials) ? record.initials : 'S/F'}
-                            topSymbol={record.topSymbol}
-                            bottomSymbol={record.bottomSymbol}
-                            orientation={record.orientation}
-                          />
+                          <span className="text-stone-400 italic text-[11px]">Sin vector</span>
                         )}
-                        <span className="text-[10px] font-mono font-bold text-amber-900 leading-none">
-                          {record.registrationNumber || record.folio || `[ ${record.initials} ]`}
+                      </td>
+
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                            record.status === 'Vigente'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : record.status === 'En Litigio'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-stone-100 text-stone-600'
+                          }`}
+                        >
+                          {record.status}
                         </span>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="py-2.5 px-3 font-mono-data whitespace-nowrap">
-                      <span className="font-bold text-stone-900 block text-xs">{record.folio}</span>
-                      <span className="block text-[10px] text-amber-800 font-mono font-bold">{record.registrationNumber}</span>
-                    </td>
-
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-semibold text-stone-900 block">{record.ownerName}</span>
-                        {record.isLocal && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-2xs">
-                            ⭐ Local / Histórico
-                          </span>
-                        )}
-                      </div>
-                      {record.curp ? (
-                        <span className="text-[10px] text-stone-600 font-mono-data block">CURP: {record.curp}</span>
-                      ) : null}
-                      {record.phone ? (
-                        <span className="text-[10px] text-stone-400 font-mono-data block">Tel: {record.phone}</span>
-                      ) : null}
-                    </td>
-
-                    <td className="py-2.5 px-3">
-                      <span className="font-medium text-stone-800 block">{record.propertyName}</span>
-                      <span className="text-stone-500 text-[11px]">
-                        {record.ejido}, Pánuco ({record.surfaceHectares} Ha)
-                      </span>
-                    </td>
-
-                    <td className="py-2.5 px-3 whitespace-nowrap text-stone-600 font-mono-data">
-                      {record.issueDate}
-                    </td>
-
-                    <td className="py-2.5 px-3 font-mono-data whitespace-nowrap text-stone-700">
-                      <span className="font-semibold text-xs">{record.uppKey}</span>
-                      <span className="block text-[10px] text-stone-400 font-sans">
-                        {record.cattleCount} {record.species}
-                      </span>
-                    </td>
-
-                    {/* Nueva Columna: Huella Vectorial */}
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      {record.vector_64d || record.brandVector ? (
-                        <div className="flex flex-col items-start gap-1">
-                          <span className="font-mono text-[10px] font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">
-                            {record.hash_vector || computeVectorChecksum(record.vector_64d || record.brandVector || [])}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCompareSimilarity(record)}
-                            className="px-2.5 py-1 text-[11px] font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 rounded shadow-2xs transition-colors inline-flex items-center gap-1 cursor-pointer"
-                            title="Comparar vector 64D contra los demás fierros en el padrón"
-                          >
-                            <Sparkles className="w-3 h-3 text-amber-900" />
-                            <span>Comparar Similitud</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-stone-400 italic text-[11px]">Sin vector</span>
-                      )}
-                    </td>
-
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          record.status === 'Vigente'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : record.status === 'En Litigio'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-stone-100 text-stone-600'
-                        }`}
-                      >
-                        {record.status}
-                      </span>
-                    </td>
-
-                    <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => setAuditoriaRecord(record)}
-                        className="px-3 py-1.5 text-xs font-bold text-stone-900 bg-amber-400 hover:bg-amber-300 rounded shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                        title="Abrir panel de auditoria completa del expediente (imagenes, vector, pagos, antiduplicidad)"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Auditar Expediente</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setAuditoriaRecord(record)}
+                          className="px-3 py-1.5 text-xs font-bold text-stone-900 bg-amber-400 hover:bg-amber-300 rounded shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                          title="Abrir panel de auditoria completa del expediente (imagenes, vector, pagos, antiduplicidad)"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Auditar Expediente</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -962,14 +947,12 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
         </div>
       </div>
 
-      {/* P4-QR: Modal del escáner de QR */}
       <QrScannerModal
         isOpen={showQrScanner}
         onClose={() => setShowQrScanner(false)}
         onScanSuccess={handleQrScanSuccess}
       />
-      {/* Modal de Alerta y Auditoría Comparativa de Vectores 8x8 */}
-      {/* FIX_AUDITORIA_MODAL: modal de auditoria completa por productor */}
+
       <ProductorAuditoriaModal
         isOpen={Boolean(auditoriaRecord)}
         onClose={() => setAuditoriaRecord(null)}
@@ -981,10 +964,8 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
         onVerCertificadoImagen={onVerCertificadoImagen}
         onCreatePaymentOrder={(rec) => {
           console.log('[Auditoria] Generar orden de cobro para:', rec.ownerName);
-          // TODO: conectar con FinanceManager
         }}
         onNavigateToCertificado={() => {
-          // FIX_TARJETA_CERTIFICADO: navegar al certificado desde el modal de auditoria
           onGoToCertificado();
         }}
       />
@@ -997,7 +978,7 @@ export const TabBuscador: React.FC<TabBuscadorProps> = ({
         }}
         sourceRecord={comparisonSourceRecord}
         allRecords={combinedDatabase}
-        onSelectCandidateForCertificate={handleLoadRecord}
+        onSelectCandidateForCertificate={handleSelectFromComparison}
       />
     </div>
   );

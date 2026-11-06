@@ -202,6 +202,8 @@ export interface HistoricalRecord {
   vector_proportions?: string;
   vector_varianza?: number;
   fierroImageUrl?: string;
+  // FIX_QR_CODE: URL de verificacion publica codificada en el QR del certificado
+  qr_code?: string;
 }
 
 export interface DigitizedHistoricalDocument {
@@ -545,3 +547,56 @@ export interface BiometricVerificationResult {
   sessionToken?: string;
 }
 
+
+
+// =========================================================================
+// PASE PRE-CERTIFICADO DE FIERRO QUEMADOR
+// Documento temporal que reserva el DIBUJO/VECTOR de un fierro por N días
+// hábiles, autorizando únicamente su hechura. No constituye certificado.
+// =========================================================================
+export type EstadoPasePreCertificado =
+  | 'RESERVADO'
+  | 'EXPIRADO'
+  | 'CERRADO_CON_ALTA'
+  | 'CANCELADO';
+
+export interface PasePreCertificado {
+  id: string;
+  folio_pase: string;
+
+  // Vector del fierro (lo que se reserva)
+  checksum_vector: string;
+  vector_64d: number[];
+  brand_vector?: number[];
+  vector_density?: number;
+  vector_symmetry_h?: number;
+  vector_symmetry_v?: number;
+  vector_proportions?: string;
+  vector_varianza?: number;
+  fierro_image_url: string;
+  fierro_brand_config?: BrandConfig;
+
+  // Datos mínimos del solicitante
+  solicitante_nombre: string;
+  solicitante_telefono: string;
+  solicitante_curp?: string;
+  solicitante_rfc?: string;
+  solicitante_ejido?: string;
+  solicitante_municipio?: string;
+  solicitante_notas?: string;
+
+  // Fechas y vigencia
+  fecha_emision: string;
+  fecha_vencimiento: string;
+  dias_vigencia: number;
+
+  // Estado
+  estado: EstadoPasePreCertificado;
+  folio_certificado_vinculado?: string;
+
+  // Auditoría
+  emitido_por: string;
+  emitido_en: string;
+  qr_code?: string;
+  notas_admin?: string;
+}

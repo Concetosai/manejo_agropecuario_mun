@@ -17,6 +17,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MunicipalConfig, MunicipalUser, ProducerData, PreloadedOrderData } from '../../types';
+import { useRecordatoriosVencimiento } from '../../hooks/useRecordatoriosVencimiento';
+import { AlertVencimientoBanner } from './AlertVencimientoBanner';
+import { ModalRecordatorios } from './ModalRecordatorios';
 
 export type ProcedureCategoryId = 'ALTA' | 'REVALIDACION' | 'BAJA' | 'CONSTANCIA' | 'DEGUELLO';
 
@@ -37,6 +40,16 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
   currentProducer,
   totalRegisteredRecords = 4250,
 }) => {
+  // FASE_RECORDATORIOS: hook de detección de vencimientos + estado del modal
+  const {
+    productoresPorVencer,
+    total: totalPorVencer,
+    hayAlertas,
+    isLoading: isLoadingRecordatorios,
+    recargar: recargarRecordatorios,
+  } = useRecordatoriosVencimiento();
+
+  const [showModalRecordatorios, setShowModalRecordatorios] = useState(false);
 
 
   // 5 Categorías principales de trámites oficiales de Pánuco
@@ -131,19 +144,25 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
         <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold text-amber-300 border border-white/10 shadow-sm">
-            <Building2 size={14} className="text-amber-400" />
-            <span>
-              {municipalConfig?.municipalityName || 'H. Ayuntamiento Constitucional de Pánuco, Ver.'} · Tesorería Municipal
-            </span>
+        <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5">
+          {/* Columna Izquierda: Logo */}
+          <div className="shrink-0">
+            <img
+              src="/simma-logo.png"
+              alt="SIMMA · Sistema Municipal de Manejo Agropecuario"
+              className="h-20 sm:h-24 w-auto object-contain bg-white rounded-2xl p-2 shadow-xl border-2 border-amber-400/50"
+            />
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight font-cinzel text-white">
-            Ventanilla Única de Trámites Ganaderos
-          </h1>
-          <p className="text-stone-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-            Plataforma oficial centralizada para la recaudación de derechos, registro de marcas de herrar, refrendos, constancias ganaderas y permisos de sacrificio en Pánuco, Veracruz.
-          </p>
+
+          {/* Columna Derecha: Título + Descripción */}
+          <div className="flex-1 min-w-0 text-center sm:text-left space-y-1.5">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight font-cinzel text-white leading-tight">
+              Ventanilla Única de Trámites Ganaderos
+            </h1>
+            <p className="text-stone-300 text-xs sm:text-sm max-w-2xl leading-relaxed mx-auto sm:mx-0">
+              Plataforma oficial centralizada para la recaudación de derechos, registro de marcas de herrar, refrendos, constancias ganaderas y permisos de sacrificio en Pánuco, Veracruz.
+            </p>
+          </div>
         </div>
 
         {/* Resumen de Métricas del Padrón y Trámites */}
@@ -170,6 +189,14 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
           </div>
         </div>
       </div>
+
+      {/* FASE_RECORDATORIOS: Banner de vencimiento de certificados */}
+      {hayAlertas && !isLoadingRecordatorios && (
+        <AlertVencimientoBanner
+          productoresPorVencer={productoresPorVencer}
+          onVerTodos={() => setShowModalRecordatorios(true)}
+        />
+      )}
 
       {/* 2. Sección Principal: Trámites Ganaderos Diarios (Alta, Revalidación, Baja) */}
       <div className="space-y-4">
@@ -456,6 +483,14 @@ export const ProceduresHub: React.FC<ProceduresHubProps> = ({
           </button>
         </div>
       </div>
+
+    {/* FASE_RECORDATORIOS: Modal con lista completa */}
+      <ModalRecordatorios
+        isOpen={showModalRecordatorios}
+        onClose={() => setShowModalRecordatorios(false)}
+        productoresPorVencer={productoresPorVencer}
+        onRecargar={recargarRecordatorios}
+      />
 
     </div>
   );

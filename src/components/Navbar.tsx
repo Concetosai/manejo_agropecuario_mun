@@ -164,55 +164,64 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="no-print sticky top-0 z-40 bg-stone-900 border-b border-stone-800 text-stone-100 shadow-md w-full">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
         {/* Left Section: Context Dependent */}
-        {isHub ? (
-          /* Hub Branding */
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-600 to-amber-800 text-white flex items-center justify-center font-cinzel font-black text-sm shadow-md border border-amber-400/30 shrink-0">
-              PV
-            </div>
-            <div>
-              <span className="text-[10px] text-amber-400/90 font-bold uppercase tracking-wider block">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          {/* Logo Button - SIEMPRE VISIBLE Y CLICKEABLE */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('hub')}
+            className="shrink-0 cursor-pointer hover:opacity-80 active:scale-95 transition-all"
+            title="Ir a la Página Principal (Home)"
+          >
+            <img
+              src="/simma-logo.png"
+              alt="SIMMA · Inicio"
+              className="h-9 sm:h-11 w-auto object-contain bg-white rounded-lg p-1 shadow-md border border-amber-400/30"
+            />
+          </button>
+
+          <div className="h-8 w-px bg-stone-700 shrink-0" />
+
+          {isHub ? (
+            /* Hub Branding Text (Solo se muestra el texto grande en el Hub) */
+            <div className="min-w-0">
+              <span className="text-[10px] text-amber-400/90 font-bold uppercase tracking-wider block truncate">
                 H. Ayuntamiento Constitucional de Pánuco, Ver.
               </span>
-              <h1 className="text-sm sm:text-base font-cinzel font-bold tracking-wider text-amber-400 leading-tight">
-                SISTEMA DE FIERRO QUEMADOR Y TESORERÍA
+              <h1 className="text-xs sm:text-base font-cinzel font-bold tracking-wider text-amber-400 leading-tight truncate">
+                SIMMA · SISTEMA MUNICIPAL DE MANEJO AGROPECUARIO
               </h1>
             </div>
-          </div>
-        ) : (
-          /* Sub-Module Back Button & Title */
-          <div className="flex items-center gap-3 truncate">
-            <button
-              type="button"
-              onClick={() => onSelectTab('hub')}
-              className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 active:scale-95 rounded-xl shadow-md transition-all cursor-pointer shrink-0 border border-amber-300"
-              title="Volver al Hub de Trámites Ganaderos"
-            >
-              <ArrowLeft className="w-4 h-4 text-amber-950" />
-              <span className="hidden sm:inline">← Volver al Hub</span>
-              <span className="sm:hidden">← Hub</span>
-            </button>
+          ) : (
+            /* Sub-Module Back Button & Title */
+            <div className="flex items-center gap-2 sm:gap-3 truncate">
+              <button
+                type="button"
+                onClick={() => onSelectTab('hub')}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 active:scale-95 rounded-lg shadow-sm transition-all cursor-pointer shrink-0 border border-amber-300"
+                title="Volver al Hub"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-amber-950" />
+                <span className="hidden sm:inline">Volver</span>
+              </button>
 
-            <div className="h-6 w-px bg-stone-800 hidden sm:block shrink-0" />
+              <div className="h-6 w-px bg-stone-700 hidden sm:block shrink-0" />
 
-            {/* Current View Title & Badge */}
-            <div className="truncate">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border ${meta.color} shrink-0`}
-                >
-                  {meta.badge}
-                </span>
-                <span className="text-xs sm:text-sm font-bold text-white truncate font-cinzel">
-                  {meta.title}
-                </span>
+              {/* Current View Title & Badge */}
+              <div className="truncate">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border ${meta.color} shrink-0 hidden sm:inline-block`}
+                  >
+                    {meta.badge}
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-white truncate font-cinzel">
+                    {meta.title}
+                  </span>
+                </div>
               </div>
-              <p className="text-[10px] text-stone-400 truncate hidden md:block">
-                {meta.subtitle}
-              </p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Right Actions */}
         <div className="flex items-center gap-2 shrink-0">

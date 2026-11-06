@@ -33,6 +33,7 @@ import {
   updatePaymentOrderStatus,
   deletePaymentOrder,
   generateNextFolio,
+  findDuplicatePaymentOrder,
   OFFICIAL_PAYMENT_CONCEPTS,
   numberToSpanishCurrencyWords,
 } from '../../services/financeFirestore';
@@ -53,6 +54,8 @@ interface FinanceManagerProps {
   onBackToHub?: () => void;
   onGoToCertificado?: () => void;
   onVerCertificadoImagen?: (folio: string) => void;
+  // 🔥 FIX_CIERRE_CICLO_FINANZAS: callback para cerrar el ciclo completo al entregar docs
+  onCerrarCiclo?: () => void;
 }
 
 // Normalizer for concepts received from procedures or catalogs
@@ -91,6 +94,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
   onBackToHub,
   onGoToCertificado,
   onVerCertificadoImagen,
+  onCerrarCiclo,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'history' | 'new_order'>(
     initialCategory || preloadedOrderData ? 'new_order' : 'history'
@@ -347,12 +351,20 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
         details: `Entrega de certificado y credencial completada para orden ${orderToDeliver.folio}. Operador: ${operadorEntregoDocs}.`,
       });
 
-      setModalAlert({ type: 'success', text: `✅ Entrega marcada correctamente. Ciclo cerrado.` });
+      setModalAlert({ type: 'success', text: `✅ Entrega marcada correctamente. Cerrando ciclo...` });
 
       setTimeout(async () => {
         setShowEntregaModal(false);
         setOrderToDeliver(null);
         await loadOrders();
+
+        // 🔥 FIX_CIERRE_CICLO_FINANZAS: llamar al callback para limpiar el registro completo
+        if (onCerrarCiclo) {
+          console.log('%c[FinanceManager] 🎉 Cierre de ciclo: llamando onCerrarCiclo', 'color: #22c55e; font-weight: bold');
+          onCerrarCiclo();
+        } else {
+          console.warn('[FinanceManager] No se recibió onCerrarCiclo — no se limpiará el registro');
+        }
       }, 1200);
 
     } catch (err: any) {
@@ -432,11 +444,31 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
       return;
     }
 
+    // FIX_RECIBO_DUPLICADO: impedir generar dos recibos iguales al mismo productor
+    const folioFierroOrigen = preloadedOrderData?.folio || '';
+    const candidatoOrden = {
+      folioFierro: folioFierroOrigen,
+      curp: preloadedOrderData?.curp || '',
+      rfc: taxpayerRfc.trim().toUpperCase() || '',
+      taxpayerName: taxpayerName.trim().toUpperCase(),
+      concepts: selectedConcepts,
+    };
+    const ordenDuplicada = findDuplicatePaymentOrder(orders, candidatoOrden);
+    if (ordenDuplicada) {
+      setAlertMessage({
+        type: 'error',
+        text: `Ya existe la orden ${ordenDuplicada.folio} (estatus ${ordenDuplicada.status}) para este productor con los mismos conceptos. Cancele o elimine esa orden antes de generar una nueva.`,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const folio = generateNextFolio(orders);
       const newOrder = await createPaymentOrder({
         folio,
+        // FIX_RECIBO_DUPLICADO: vincular el recibo al fierro que lo origino
+        folioFierro: folioFierroOrigen || undefined,
         exercise,
         taxpayerName: taxpayerName.trim().toUpperCase(),
         rfc: taxpayerRfc.trim().toUpperCase() || 'XAXX010101000',
@@ -555,7 +587,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
               </span>
             )}
 
-            {currentProducer?.fullName && (onVerCertificadoImagen || onGoToCertificado) && (
+            {currentProducer?.fullName && onGoToCertificado && (
               <button
                 type="button"
                 onClick={() => {
@@ -563,13 +595,8 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                     alert('Debe guardar primero la orden de cobro antes de ver el Certificado Oficial.');
                     return;
                   }
-                  if (onVerCertificadoImagen && lastSavedOrder.folioFierro) {
-                    onVerCertificadoImagen(lastSavedOrder.folioFierro);
-                  } else if (onVerCertificadoImagen && currentProducer.folio) {
-                    onVerCertificadoImagen(currentProducer.folio);
-                  } else if (onGoToCertificado) {
-                    onGoToCertificado();
-                  }
+                  // 🔥 FIX_VER_CERT_CONSOLIDADO: navegar a TabCertificado en modo CONSOLIDADO
+                  onGoToCertificado();
                 }}
                 disabled={!lastSavedOrder}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border shadow-2xs ${

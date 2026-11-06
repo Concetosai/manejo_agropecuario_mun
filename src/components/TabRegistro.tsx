@@ -3,6 +3,7 @@ import { ProducerData, PreloadedOrderData, BrandConfig } from '../types';
 import { TabCreador } from './TabCreador';
 import { recordAuditLog } from '../utils/auditAuth';
 import { guardarRegistroCompleto } from '../utils/googleSheetsIntegration';
+import { buildVerificationData, buildVerificationUrl } from '../utils/qrVerification';
 import { actualizarUrlsRecibo } from '../services/googleSheetsService';
 import { renderBrandToCanvas } from '../utils/canvasRenderer';
 import { subirImagenACloudinary } from '../services/cloudinaryService';
@@ -153,6 +154,8 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState<boolean>(false);
   const [validationActionAttempted, setValidationActionAttempted] = useState<'save' | 'proceed' | 'print'>('save');
+  // FIX_DUPLICADO_BLOQUEO: modal que impide el alta cuando hay CURP/RFC/INE duplicados
+  const [duplicateBlock, setDuplicateBlock] = useState<{ folio?: string; titular?: string; matchField?: string } | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState<boolean>(false);
   const [photoModalMode, setPhotoModalMode] = useState<'capture' | 'preview'>('preview');
   const [photoLoadError, setPhotoLoadError] = useState<boolean>(false);
@@ -424,6 +427,24 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
 
     try {
 
+    // FIX_DUPLICADO_BLOQUEO: impedir el alta si CURP/RFC/INE coinciden con un registro existente
+    // (la coincidencia solo por nombre se mantiene como advertencia, no bloquea)
+    const esDuplicadoDuro =
+      duplicate.found &&
+      (duplicate.matchField === 'curp' || duplicate.matchField === 'rfc' || duplicate.matchField === 'ine');
+    if (esDuplicadoDuro) {
+      setDuplicateBlock({
+        folio: duplicate.folio,
+        titular: duplicate.existingRecord?.ownerName,
+        matchField: duplicate.matchField,
+      });
+      setValidationWarning(
+        `Asiento bloqueado: ya existe un productor con la misma ${duplicate.matchField === 'curp' ? 'CURP' : duplicate.matchField === 'rfc' ? 'RFC' : 'INE'} (Folio ${duplicate.folio}).`
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return false;
+    }
+
     // VALIDACION_COMPLETA_HOJAS_1_4: recolectar TODOS los faltantes de Hojas 1-4
     const todosLosFaltantes: MissingField[] = [];
     for (let paso = 1; paso <= 4; paso++) {
@@ -449,6 +470,9 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
       );
       return false;
     }
+
+    // FIX_QR_CODE: URL publica de verificacion que se guarda en la columna qr_code
+    const qrVerificationUrl = buildVerificationUrl(buildVerificationData(producerData));
 
     try {
       const regId = producerData.registrationNumber || `REG-2026-${Math.floor(Math.random() * 9000 + 1000)}`;
@@ -493,6 +517,7 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
         vector_symmetry_v: producerData.vector_symmetry_v || undefined,
         vector_proportions: producerData.vector_proportions || undefined,
         vector_varianza: producerData.vector_varianza || undefined,
+        qr_code: qrVerificationUrl,
       } as any;
 
       const imagenes: any = {};
@@ -580,6 +605,7 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
       vector_symmetry_v: producerData.vector_symmetry_v || undefined,
       vector_proportions: producerData.vector_proportions || undefined,
       vector_varianza: producerData.vector_varianza || undefined,
+      qr_code: qrVerificationUrl,
     } as any);
 
     recordAuditLog({
@@ -1313,7 +1339,7 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
                       ⚠️ Productor ya registrado en el padrón
                     </span>
                     <p className="text-xs text-rose-900 mt-1">
-                      Se encontró coincidencia por <strong>{duplicate.matchField === 'curp' ? 'CURP' : duplicate.matchField === 'ine' ? 'INE' : 'nombre'}</strong>:
+                      Se encontró coincidencia por <strong>{duplicate.matchField === 'curp' ? 'CURP' : duplicate.matchField === 'ine' ? 'INE' : duplicate.matchField === 'rfc' ? 'RFC' : 'nombre'}</strong>:
                     </p>
                     <p className="text-xs text-rose-900 mt-0.5">
                       Folio existente: <span className="font-mono font-bold">{duplicate.folio}</span>
@@ -2994,6 +3020,43 @@ export const TabRegistro: React.FC<TabRegistroProps> = ({
         producerName={producerData.fullName}
         initialMode={photoModalMode}
       />
+
+      {/* FIX_DUPLICADO_BLOQUEO: Modal de alta bloqueada por duplicado */}
+      {duplicateBlock && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border-2 border-rose-300">
+            <div className="p-5 border-b border-rose-100 flex items-center gap-3 bg-rose-50 rounded-t-2xl">
+              <AlertCircle className="w-6 h-6 text-rose-600 shrink-0" />
+              <h3 className="font-bold text-rose-900 text-base">Alta bloqueada · Productor ya registrado</h3>
+            </div>
+            <div className="p-5 space-y-3 text-sm text-slate-700">
+              <p>
+                Ya existe un registro vigente que coincide por{' '}
+                <strong>
+                  {duplicateBlock.matchField === 'curp' ? 'CURP' : duplicateBlock.matchField === 'rfc' ? 'RFC' : 'INE'}
+                </strong>.
+                No es posible asentar un alta duplicada.
+              </p>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs">
+                <div>Folio existente: <span className="font-mono font-bold">{duplicateBlock.folio}</span></div>
+                {duplicateBlock.titular && (<div>Titular: <strong>{duplicateBlock.titular}</strong></div>)}
+              </div>
+              <p className="text-xs text-slate-500 italic">
+                Si es la misma persona, edite el registro existente. Si es un productor distinto, corrija la CURP/RFC/INE capturada.
+              </p>
+            </div>
+            <div className="p-4 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDuplicateBlock(null)}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold transition-colors cursor-pointer"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,28 +1,34 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft,
-  Search,
   RefreshCw,
   CheckCircle2,
   AlertCircle,
-  Printer,
-  DollarSign,
   Loader2,
-  User,
-  Calendar,
   ShieldCheck,
+  User,
+  Hash,
 } from 'lucide-react';
 import { MunicipalConfig, MunicipalUser, PreloadedOrderData } from '../../types';
 import {
   buscarPropietarioEnSheet,
   revalidarRegistroEnSheet,
+  guardarChecklistEnSheet,
+  registrarRevalidacionHistorial,
+  obtenerRegistrosDelSheet,
   GoogleRegistro,
 } from '../../services/googleSheetsService';
+import { getRequisitosPorTramite } from '../../utils/requisitosConfig';
 import { recordAuditLog } from '../../utils/auditAuth';
+import { RevalidacionBuscador } from './RevalidacionBuscador';
+import { ModalVerificacionRevalidacion, CamposEditados } from './ModalVerificacionRevalidacion';
+import { ModalResultadoVerificacion } from './ModalResultadoVerificacion';
 
 interface RevalidacionViewProps {
   onBack: () => void;
   onGoToFinance: (category?: 'REVALIDACION', preloaded?: PreloadedOrderData) => void;
+  // 🔥 NUEVO: callback para redirigir a TabCertificado con el registro revalidado
+  onGoToCertificadoConProductor: (record: GoogleRegistro) => void;
   municipalConfig: MunicipalConfig;
   currentUser: MunicipalUser;
 }
@@ -32,8 +38,8 @@ const LATE_FEE = 150;
 const CERTIFICATE_FEE = 180;
 
 /**
- * Calcula la nueva vigencia sumando 3 años a la vigencia actual.
- * Formato esperado: "2023-2026" o "2026 - 2029"
+ * Calcula la nueva vigencia sumando 3 años.
+ * Formato: "2026 - 2029" → "2029-2032"
  */
 function calcularNuevaVigencia(vigenciaActual?: string): string {
   const añoActual = new Date().getFullYear();
@@ -43,211 +49,378 @@ function calcularNuevaVigencia(vigenciaActual?: string): string {
     return `${añoActual}-${añoFinal}`;
   }
 
-  // Intentar extraer el año final de la vigencia actual
   const match = String(vigenciaActual).match(/(\d{4})\s*[-–]\s*(\d{4})/);
   if (match && match[2]) {
     const finalActual = parseInt(match[2], 10);
-    // Si el año final de la vigencia es >= al año actual, sumar 3 años
     if (finalActual >= añoActual) {
       return `${finalActual}-${finalActual + 3}`;
     }
   }
 
-  // Fallback: usar año actual + 3
   return `${añoActual}-${añoFinal}`;
 }
 
 export const RevalidacionView: React.FC<RevalidacionViewProps> = ({
   onBack,
   onGoToFinance,
+  onGoToCertificadoConProductor,
   municipalConfig,
   currentUser,
 }) => {
-  // Búsqueda
-  const [folioQuery, setFolioQuery] = useState('');
-  const [buscando, setBuscando] = useState(false);
-  const [fierroEncontrado, setFierroEncontrado] = useState<GoogleRegistro | null>(null);
-  const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
+  // ═══ FASE 1: BUSCADOR ═══
+  const [registros, setRegistros] = useState<GoogleRegistro[]>([]);
+  const [isLoadingRegistros, setIsLoadingRegistros] = useState(true);
+  const [fierroSeleccionado, setFierroSeleccionado] = useState<GoogleRegistro | null>(null);
 
-  // Opciones de cobro
-  const [includeLateFee, setIncludeLateFee] = useState(false);
-  const [includeCertificate, setIncludeCertificate] = useState(true);
+  // ═══ FASE 2: VERIFICACIÓN ═══
+  const [showVerificacion, setShowVerificacion] = useState(false);
+  const [camposEditados, setCamposEditados] = useState<CamposEditados>({});
+  const [requisitosMarcados, setRequisitosMarcados] = useState<string[]>([]);
+  const [totalCriticos, setTotalCriticos] = useState(0);
 
-  // Estados de emisión
-  const [isGeneratingOrder, setIsGeneratingOrder] = useState(false);
-  const [createdOrderFolio, setCreatedOrderFolio] = useState<string | null>(null);
-  const [showPrintModal, setShowPrintModal] = useState(false);
+  // ═══ FASE 3: RESULTADO ═══
+  const [showResultado, setShowResultado] = useState(false);
+  const [exito, setExito] = useState(false);
+  const [erroresResultado, setErroresResultado] = useState<string[]>([]);
+
+  // ═══ ESTADOS GLOBALES ═══
+  const [isProcessing, setIsProcessing] = useState(false);
   const [alertMsg, setAlertMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const fierroValidado = fierroEncontrado !== null;
-
-  // Nueva vigencia calculada
-  const nuevaVigencia = useMemo(() => {
-    return calcularNuevaVigencia(fierroEncontrado?.vigencia);
-  }, [fierroEncontrado]);
-
-  // Monto total
-  const totalAmount = useMemo(() => {
-    let sum = REVALIDATION_FEE;
-    if (includeLateFee) sum += LATE_FEE;
-    if (includeCertificate) sum += CERTIFICATE_FEE;
-    return sum;
-  }, [includeLateFee, includeCertificate]);
-
-  // =========================================================================
-  // BUSCAR FIERRO
-  // =========================================================================
-  const handleBuscarFolio = async () => {
-    const q = folioQuery.trim();
-    if (!q) {
-      setErrorBusqueda('Ingrese un folio, CURP o RFC para buscar');
-      return;
-    }
-
-    setBuscando(true);
-    setErrorBusqueda(null);
-    setFierroEncontrado(null);
-    setCreatedOrderFolio(null);
-
+  // ═══ CARGAR REGISTROS AL MONTAR ═══
+  const cargarRegistros = useCallback(async () => {
+    setIsLoadingRegistros(true);
     try {
-      const result = await buscarPropietarioEnSheet(q);
-
-      if (result.success && result.registro) {
-        const r = result.registro;
-
-        // Bloquear si está cancelado
-        if (r.estatus === 'CANCELADO') {
-          setErrorBusqueda(
-            `El fierro ${r.folio} está CANCELADO (${r.motivo_baja || 'sin motivo'}). No se puede revalidar.`
-          );
-          setBuscando(false);
-          return;
-        }
-
-        setFierroEncontrado(r);
-
-        // Autoactivar multa si la vigencia ya venció
-        const añoActual = new Date().getFullYear();
-        const match = String(r.vigencia || '').match(/(\d{4})\s*[-–]\s*(\d{4})/);
-        if (match && match[2]) {
-          const finalVig = parseInt(match[2], 10);
-          if (finalVig < añoActual) {
-            setIncludeLateFee(true);
-          }
-        }
-
-        setAlertMsg({
-          type: 'success',
-          text: `Fierro encontrado: ${r.folio} — ${r.nombre_productor}`,
-        });
-        setTimeout(() => setAlertMsg(null), 4000);
+      const result = await obtenerRegistrosDelSheet();
+      if (result.success) {
+        setRegistros(result.registros || []);
+        console.log('%c[Revalidacion] Registros cargados:', 'color: #0ea5e9', result.total);
       } else {
-        setErrorBusqueda(result.error || 'No se encontró el fierro. Verifique el folio, CURP o RFC.');
+        setAlertMsg({
+          type: 'error',
+          text: 'No se pudo cargar el padrón: ' + (result.error || 'desconocido'),
+        });
       }
     } catch (err: any) {
-      setErrorBusqueda('Error de conexión: ' + (err.message || 'desconocido'));
-    } finally {
-      setBuscando(false);
-    }
-  };
-
-  // =========================================================================
-  // GENERAR ORDEN DE REVALIDACIÓN (CABLEADO)
-  // =========================================================================
-  const handleGeneratePaymentOrder = async () => {
-    if (!fierroValidado || !fierroEncontrado) {
       setAlertMsg({
         type: 'error',
-        text: 'Primero debe buscar y validar un fierro existente en el padrón.',
+        text: 'Error de conexión: ' + (err.message || 'desconocido'),
       });
-      setTimeout(() => setAlertMsg(null), 4000);
+    } finally {
+      setIsLoadingRegistros(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarRegistros();
+  }, [cargarRegistros]);
+
+  // ═══ SELECCIONAR PRODUCTOR ═══
+  const handleSelectProductor = (registro: GoogleRegistro) => {
+    if (registro.estatus === 'CANCELADO') {
+      setAlertMsg({
+        type: 'error',
+        text: `El fierro ${registro.folio} está CANCELADO (${registro.motivo_baja || 'sin motivo'}). No se puede revalidar.`,
+      });
+      setTimeout(() => setAlertMsg(null), 5000);
       return;
     }
 
-    setIsGeneratingOrder(true);
-    setAlertMsg(null);
+    setFierroSeleccionado(registro);
+    setShowVerificacion(true);
+    console.log('%c[Revalidacion] Productor seleccionado:', 'color: #22c55e', registro.folio);
+  };
+
+  // ═══ CONFIRMAR VERIFICACIÓN ═══
+  const handleConfirmarVerificacion = (resultado: {
+    camposEditados: CamposEditados;
+    requisitosMarcados: string[];
+    totalCriticos: number;
+  }) => {
+    setCamposEditados(resultado.camposEditados);
+    setRequisitosMarcados(resultado.requisitosMarcados);
+    setTotalCriticos(resultado.totalCriticos);
+    setShowVerificacion(false);
+
+    // Verificar si hay cambios para validar
+    const totalCambios = Object.keys(resultado.camposEditados).length;
+    console.log('%c[Revalidacion] Verificación confirmada:', 'color: #22c55e', {
+      cambios: totalCambios,
+      requisitos: resultado.requisitosMarcados.length,
+    });
+
+    // Abrir modal de resultado
+    setExito(true); // Siempre éxito si el modal de verificación permitió confirmar
+    setErroresResultado([]);
+    setShowResultado(true);
+  };
+
+  // ═══ GENERAR RECIBO (FASE FINAL) ═══
+  const handleGenerarRecibo = async () => {
+    if (!fierroSeleccionado) return;
+
+    setIsProcessing(true);
+    setShowResultado(false);
 
     try {
-      // 1) Llamar al endpoint revalidarRegistro
+      const nuevaVigencia = calcularNuevaVigencia(fierroSeleccionado.vigencia);
+      const totalCambios = Object.keys(camposEditados).length;
+
+      // ═══════════════════════════════════════════════════════════════
+      // PASO 1: Guardar cambios de campos en REGISTROS
+      // ═══════════════════════════════════════════════════════════════
+      console.log('%c[Revalidacion] Paso 1/4: Actualizando REGISTROS...', 'color: #0ea5e9');
+
+      // Preparar payload con los cambios aplicados
+      const cambiosAplicados: Record<string, string> = {};
+      Object.entries(camposEditados).forEach(([key, { nuevo }]) => {
+        cambiosAplicados[key] = nuevo;
+      });
+
+      // Llamar a revalidarRegistro que actualiza vigencia + estatus
       const revalidacionResult = await revalidarRegistroEnSheet({
-        folio: fierroEncontrado.folio || '',
+        folio: fierroSeleccionado.folio || '',
         fecha_nueva_vigencia: nuevaVigencia,
         operador: currentUser.fullName,
       });
 
       if (!revalidacionResult.success) {
-        setAlertMsg({
-          type: 'error',
-          text: 'Error al revalidar: ' + (revalidacionResult.error || 'desconocido'),
-        });
-        setIsGeneratingOrder(false);
+        setErroresResultado([revalidacionResult.error || 'Error al revalidar en Sheets']);
+        setExito(false);
+        setShowResultado(true);
+        setIsProcessing(false);
         return;
       }
 
-      // 2) Audit log
-      recordAuditLog({
-        actionType: 'REGISTRO_MODIFICADO',
-        folioAffected: fierroEncontrado.folio || '',
-        producerAffected: fierroEncontrado.nombre_productor || '',
-        details: `Revalidación 2026 ejecutada. Nueva vigencia: ${nuevaVigencia}. Multa: ${includeLateFee ? 'SÍ' : 'NO'}. Constancia: ${includeCertificate ? 'SÍ' : 'NO'}. Total: $${totalAmount}.00 MXN.`,
-      });
+      // ═══════════════════════════════════════════════════════════════
+      // PASO 2: Guardar checklist de requisitos en REGISTROS (cols 51-55)
+      // ═══════════════════════════════════════════════════════════════
+      console.log('%c[Revalidacion] Paso 2/4: Guardando checklist...', 'color: #0ea5e9');
+
+      try {
+        const checklistResult = await guardarChecklistEnSheet({
+          folio: fierroSeleccionado.folio || '',
+          tramite: 'REVALIDACION',
+          requisitos_marcados: requisitosMarcados,
+          total_criticos: totalCriticos,
+          operador: currentUser.fullName,
+        });
+
+        if (!checklistResult.success) {
+          console.warn('[Revalidacion] No se pudo guardar checklist:', checklistResult.error);
+        }
+      } catch (checklistErr) {
+        console.warn('[Revalidacion] Error guardando checklist:', checklistErr);
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // PASO 3: Guardar historial en REVALIDACIONES
+      // ═══════════════════════════════════════════════════════════════
+      console.log('%c[Revalidacion] Paso 3/4: Guardando historial...', 'color: #0ea5e9');
+
+      try {
+        const historialResult = await registrarRevalidacionHistorial({
+          folio_original: fierroSeleccionado.folio || '',
+          vigencia_anterior: fierroSeleccionado.vigencia || '',
+          vigencia_nueva: nuevaVigencia,
+          operador: currentUser.fullName,
+          notas:
+            totalCambios > 0
+              ? `Cambios aplicados: ${Object.keys(camposEditados).join(', ')}`
+              : 'Sin cambios en datos',
+        });
+
+        if (historialResult.success) {
+          console.log('%c[Revalidacion] Historial:', 'color: #22c55e', historialResult.folio_revalidacion);
+        }
+      } catch (histErr) {
+        console.warn('[Revalidacion] Error guardando historial:', histErr);
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // PASO 3.5 (NUEVO): Regenerar certificado PNG + actualizar Sheets
+      // ═══════════════════════════════════════════════════════════════
+      console.log('%c[Revalidacion] Paso 3.5/5: Regenerando certificado PNG...', 'color: #0ea5e9');
+
+      // FIX_MAP_REGISTRO: mapear GoogleRegistro → HistoricalRecord con todos los campos
+      // que espera handleLoadRecordIntoCertificate (App.tsx)
+      const registroRevalidado: any = {
+        ...fierroSeleccionado,
+        vigencia: nuevaVigencia,
+        estatus: 'REVALIDADO',
+        // Mapear campos de GoogleRegistro → HistoricalRecord
+        id: fierroSeleccionado.id_registro || fierroSeleccionado.folio || '',
+        id_registro: fierroSeleccionado.id_registro || fierroSeleccionado.folio || '',
+        ownerName: fierroSeleccionado.nombre_productor || 'Productor sin nombre',
+        fullName: fierroSeleccionado.nombre_productor || 'Productor sin nombre',
+        curp: fierroSeleccionado.curp || '',
+        rfc: fierroSeleccionado.rfc || '',
+        ine: fierroSeleccionado.ine || '',
+        address: fierroSeleccionado.domicilio || '',
+        phone: fierroSeleccionado.telefono || '',
+        email: fierroSeleccionado.email || '',
+        propertyName: fierroSeleccionado.predio || '',
+        ejido: fierroSeleccionado.ejido || '',
+        municipio: fierroSeleccionado.municipio || 'Pánuco',
+        surfaceHectares: Number(fierroSeleccionado.superficie) || 0,
+        tenureType: fierroSeleccionado.tenencia || 'PRIVADA',
+        cattleCount: Number(fierroSeleccionado.cantidad_ganado) || 0,
+        species: fierroSeleccionado.especie || 'BOVINO',
+        uppKey: fierroSeleccionado.upp || '',
+        registrationNumber: fierroSeleccionado.numero_registro || '',
+        bookNumber: fierroSeleccionado.libro || '',
+        folioPage: fierroSeleccionado.foja || '',
+        validityRange: nuevaVigencia,
+        issueDate: fierroSeleccionado.fecha_expedicion || new Date().toISOString().split('T')[0],
+        status: 'Vigente' as const,
+        initials: fierroSeleccionado.iniciales || '',
+        topSymbol: 'corona' as const,
+        bottomSymbol: 'herradura' as const,
+        orientation: 'enlazado' as const,
+        vector_64d: fierroSeleccionado.vector_64d || undefined,
+        brandVector: fierroSeleccionado.vector_64d || undefined,
+        vector_checksum: fierroSeleccionado.vector_checksum || undefined,
+        vector_density: fierroSeleccionado.vector_density || undefined,
+        vector_symmetry_h: fierroSeleccionado.vector_symmetry_h || undefined,
+        vector_symmetry_v: fierroSeleccionado.vector_symmetry_v || undefined,
+        vector_proportions: fierroSeleccionado.vector_proportions || undefined,
+        vector_varianza: fierroSeleccionado.vector_varianza || undefined,
+        // URLs
+        url_fierro: fierroSeleccionado.url_fierro || undefined,
+        url_foto_titular: fierroSeleccionado.url_foto_titular || undefined,
+        url_firma: fierroSeleccionado.url_firma || undefined,
+        url_ine: fierroSeleccionado.url_ine || undefined,
+        url_certificado: fierroSeleccionado.url_certificado || undefined,
+        url_certificado_imagen: fierroSeleccionado.url_certificado_imagen || undefined,
+        // Imágenes
+        producerPhoto: fierroSeleccionado.url_foto_titular || undefined,
+        producerSignature: fierroSeleccionado.url_firma || undefined,
+        inePhoto: fierroSeleccionado.url_ine || undefined,
+        fierroImageUrl: fierroSeleccionado.url_fierro || undefined,
+        extractedBrandImage: fierroSeleccionado.url_fierro || undefined,
+        imagenes: {
+          credencial_ine: fierroSeleccionado.url_ine || undefined,
+          fierro_digitalizado: fierroSeleccionado.url_fierro || undefined,
+          certificado_generado: fierroSeleccionado.url_certificado || undefined,
+        },
+      };
+
+      // 🔥 FIX_FORZAR_REGENERACION: borrar flag de subida previa
+      const UPLOADED_KEY = 'panuco_cert_uploaded_' + fierroSeleccionado.folio;
+      localStorage.removeItem(UPLOADED_KEY);
+      console.log('%c[Revalidacion] 🗑️ Flag de subida previa eliminado:', 'color: #f59e0b', UPLOADED_KEY);
+
+      // Limpiar cache local del certificado
+      try {
+        const DB_KEY = 'panuco_fierros_db_v2';
+        const raw = localStorage.getItem(DB_KEY);
+        if (raw) {
+          const db = JSON.parse(raw);
+          const registros = Array.isArray(db) ? db : (db.registros || []);
+          let limpiados = 0;
+          registros.forEach((r: any) => {
+            if (r.folio === fierroSeleccionado.folio) {
+              r.url_certificado_imagen = '';
+              r.certificadoImagenUrl = '';
+              limpiados++;
+            }
+          });
+          localStorage.setItem(DB_KEY, JSON.stringify(Array.isArray(db) ? registros : { ...db, registros }));
+          console.log(`%c[Revalidacion] 🗑️ Cache local limpiado (${limpiados} registro)`, 'color: #f59e0b');
+        }
+      } catch (err) {
+        console.warn('[Revalidacion] No se pudo limpiar cache local:', err);
+      }
 
       setAlertMsg({
         type: 'success',
-        text: `✅ Fierro revalidado. Nueva vigencia: ${nuevaVigencia}`,
+        text: `✅ Fierro ${fierroSeleccionado.folio} revalidado. Regenerando certificado con nueva vigencia ${nuevaVigencia}...`,
       });
 
-      // 3) Preparar conceptos para FinanceManager
-      const concepts = ['2. REVALIDACION FIERRO QUEMADOR'];
-      if (includeLateFee) concepts.push('3. MULTA POR PAGO EXTEMPORANEO');
-      if (includeCertificate) concepts.push('5. PAGO DE CONSTANCIA');
+      // Redirigir a TabCertificado (modo preview) DESPUÉS de un delay
+      // para que TabCertificado regenere el PNG y actualice url_certificado_imagen en Sheets
+      setTimeout(() => {
+        onGoToCertificadoConProductor(registroRevalidado);
+      }, 1500);
+
+      return; // ← IMPORTANTE: no seguir al Paso 4/5 (Finanzas) automáticamente
+
+      // ═══════════════════════════════════════════════════════════════
+      // PASO 4: Auditoría (solo si NO se regeneró el certificado)
+      // ═══════════════════════════════════════════════════════════════
+      recordAuditLog({
+        actionType: 'REGISTRO_MODIFICADO',
+        folioAffected: fierroSeleccionado.folio || '',
+        producerAffected: fierroSeleccionado.nombre_productor || '',
+        details: `Revalidación ejecutada. Nueva vigencia: ${nuevaVigencia}. Cambios: ${totalCambios}. Requisitos: ${requisitosMarcados.length}/${totalCriticos}. Operador: ${currentUser.fullName}.`,
+      });
+
+      // ═══════════════════════════════════════════════════════════════
+      // PASO 5: Preparar PreloadedOrderData para Finanzas
+      // ═══════════════════════════════════════════════════════════════
+      console.log('%c[Revalidacion] Paso 4/4: Redirigiendo a Finanzas...', 'color: #0ea5e9');
+
+      const conceptos = ['2. REVALIDACION FIERRO QUEMADOR'];
+      const montoTotal = REVALIDATION_FEE;
 
       const payload: PreloadedOrderData = {
-        nombreContribuyente: (fierroEncontrado.nombre_productor || '').toUpperCase(),
-        domicilioContribuyente: `${fierroEncontrado.predio ? `${fierroEncontrado.predio} - ` : ''}Ejido ${fierroEncontrado.ejido || ''}, Pánuco, Ver.`,
-        rfc: fierroEncontrado.rfc || '',
-        curp: fierroEncontrado.curp || '',
-        folio: fierroEncontrado.folio || '',
-        conceptosSeleccionados: concepts,
-        montoTotal: totalAmount,
+        nombreContribuyente: (fierroSeleccionado.nombre_productor || '').toUpperCase(),
+        domicilioContribuyente: `${fierroSeleccionado.predio ? `${fierroSeleccionado.predio} - ` : ''}Ejido ${fierroSeleccionado.ejido || ''}, Pánuco, Ver.`,
+        rfc: fierroSeleccionado.rfc || '',
+        curp: fierroSeleccionado.curp || '',
+        folio: fierroSeleccionado.folio || '',
+        conceptosSeleccionados: conceptos,
+        montoTotal: montoTotal,
         ejercicioFiscal: '2026-2029',
         periodo: 'OCTUBRE 2026',
         fechaExpedicion: new Date().toISOString().split('T')[0],
         tramiteOrigen: 'REVALIDACION',
-        notas: `Revalidación anual 2026 de fierro "${fierroEncontrado.iniciales}" (Folio: ${fierroEncontrado.folio}). Nueva vigencia: ${nuevaVigencia}.${includeLateFee ? ' Incluye multa por extemporáneo.' : ''}${includeCertificate ? ' Incluye constancia de refrendo.' : ''}`,
+        notas: `Revalidación del fierro "${fierroSeleccionado.iniciales}" (Folio: ${fierroSeleccionado.folio}). Nueva vigencia: ${nuevaVigencia}.${totalCambios > 0 ? ` Cambios aplicados: ${totalCambios}.` : ' Sin cambios en datos.'}`,
       };
 
-      // 4) Redirigir a FinanceManager
+      setAlertMsg({
+        type: 'success',
+        text: `✅ Fierro ${fierroSeleccionado.folio} revalidado. Nueva vigencia: ${nuevaVigencia}. Redirigiendo a Finanzas...`,
+      });
+
+      // Redirigir a Finanzas
       setTimeout(() => {
         onGoToFinance('REVALIDACION', payload);
-      }, 1500);
+      }, 1200);
 
     } catch (err: any) {
-      setAlertMsg({
-        type: 'error',
-        text: 'Excepción: ' + (err.message || 'desconocido'),
-      });
+      console.error('[Revalidacion] Error:', err);
+      setErroresResultado([err.message || 'Error desconocido al revalidar']);
+      setExito(false);
+      setShowResultado(true);
     } finally {
-      setIsGeneratingOrder(false);
+      setIsProcessing(false);
     }
   };
 
-  // =========================================================================
-  // LIMPIAR
-  // =========================================================================
-  const handleLimpiar = () => {
-    setFolioQuery('');
-    setFierroEncontrado(null);
-    setErrorBusqueda(null);
-    setIncludeLateFee(false);
-    setIncludeCertificate(true);
-    setCreatedOrderFolio(null);
+  // ═══ VOLVER A EDITAR ═══
+  const handleVolverAEditar = () => {
+    setShowResultado(false);
+    setShowVerificacion(true);
   };
+
+  // ═══ CERRAR RESULTADO ═══
+  const handleCloseResultado = () => {
+    setShowResultado(false);
+    setFierroSeleccionado(null);
+    setCamposEditados({});
+    setRequisitosMarcados([]);
+    setTotalCriticos(0);
+  };
+
+  // ═══ REQUISITOS DEL TRÁMITE ═══
+  const requisitosConfig = getRequisitosPorTramite('REVALIDACION');
 
   return (
     <div className="min-h-[85vh] bg-stone-100 py-6 px-3 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Top Header */}
+      <div className="max-w-5xl mx-auto space-y-6">
+
+        {/* HEADER */}
         <div className="bg-white rounded-2xl p-4 sm:p-6 border border-stone-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
@@ -264,7 +437,9 @@ export const RevalidacionView: React.FC<RevalidacionViewProps> = ({
                 <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-extrabold uppercase tracking-wider">
                   Trámite 2 de 5 · Tesorería Pánuco
                 </span>
-                <span className="text-xs font-mono font-bold text-stone-400">Ejercicio Fiscal 2026</span>
+                <span className="text-xs font-mono font-bold text-stone-400">
+                  Ejercicio Fiscal 2026
+                </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-stone-900 font-cinzel tracking-tight mt-0.5">
                 Revalidación y Refrendo de Fierro Quemador
@@ -277,12 +452,12 @@ export const RevalidacionView: React.FC<RevalidacionViewProps> = ({
             onClick={() => onGoToFinance('REVALIDACION')}
             className="px-3.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-amber-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            <DollarSign size={14} className="text-amber-400" />
+            <Hash size={14} className="text-amber-400" />
             <span>Ver Órdenes en Finanzas</span>
           </button>
         </div>
 
-        {/* Alert */}
+        {/* ALERT */}
         {alertMsg && (
           <div
             className={`p-3.5 rounded-xl border flex items-center justify-between text-xs sm:text-sm font-semibold ${
@@ -309,332 +484,106 @@ export const RevalidacionView: React.FC<RevalidacionViewProps> = ({
           </div>
         )}
 
-        {/* Two-Column Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Buscador */}
-          <div className="lg:col-span-5 space-y-4">
-            <div className="bg-white rounded-2xl p-5 border border-stone-200 shadow-sm space-y-4">
-              <h2 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                <Search size={16} className="text-blue-600" />
-                <span>1. Localizar Titular en el Padrón</span>
-              </h2>
-
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold text-stone-700 block">
-                  Folio, CURP o RFC del fierro:
-                </label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-                    <input
-                      type="text"
-                      value={folioQuery}
-                      onChange={(e) => setFolioQuery(e.target.value.toUpperCase())}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleBuscarFolio(); }}
-                      placeholder="Ej. PAN-2026-04293"
-                      className="w-full pl-9 pr-3 py-2.5 text-xs bg-stone-50 border border-stone-300 rounded-xl font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={buscando}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleBuscarFolio}
-                    disabled={buscando || !folioQuery.trim()}
-                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    {buscando ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        <span>Buscando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Search size={14} />
-                        <span>Buscar</span>
-                      </>
-                    )}
-                  </button>
-                  {(fierroEncontrado || errorBusqueda) && (
-                    <button
-                      type="button"
-                      onClick={handleLimpiar}
-                      className="px-3 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                      title="Limpiar búsqueda"
-                    >
-                      Limpiar
-                    </button>
-                  )}
-                </div>
-
-                {errorBusqueda && (
-                  <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2">
-                    <AlertCircle size={14} className="text-rose-600 shrink-0 mt-0.5" />
-                    <span className="text-[11px] text-rose-900 font-medium">{errorBusqueda}</span>
-                  </div>
-                )}
-
-                {fierroValidado && fierroEncontrado && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl space-y-1">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 size={14} className="text-emerald-700" />
-                      <strong className="text-xs font-bold text-emerald-900">
-                        Fierro validado: {fierroEncontrado.folio}
-                      </strong>
-                      {fierroEncontrado.estatus && (
-                        <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
-                          {fierroEncontrado.estatus}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-emerald-800">
-                      {fierroEncontrado.nombre_productor}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Info del fierro (mini profile) */}
-              {fierroValidado && fierroEncontrado && (
-                <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 space-y-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-lg bg-stone-900 text-amber-400 flex items-center justify-center font-cinzel font-black text-sm shadow-inner shrink-0">
-                      {fierroEncontrado.iniciales || '??'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-stone-900 truncate">{fierroEncontrado.nombre_productor}</p>
-                      <p className="text-[10px] text-stone-500 truncate">
-                        {fierroEncontrado.predio || 'Sin predio'} · Ejido {fierroEncontrado.ejido || 'N/D'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-200 text-[10px]">
-                    <div>
-                      <span className="text-stone-400 uppercase font-bold block">UPP</span>
-                      <span className="font-mono font-bold text-stone-800">{fierroEncontrado.upp || 'N/D'}</span>
-                    </div>
-                    <div>
-                      <span className="text-stone-400 uppercase font-bold block">RFC</span>
-                      <span className="font-mono font-bold text-stone-800">{fierroEncontrado.rfc || 'N/D'}</span>
-                    </div>
-                    <div>
-                      <span className="text-stone-400 uppercase font-bold block">Censo</span>
-                      <span className="font-bold text-stone-800">{fierroEncontrado.cantidad_ganado || '0'} cabezas</span>
-                    </div>
-                    <div>
-                      <span className="text-stone-400 uppercase font-bold block">Superficie</span>
-                      <span className="font-bold text-stone-800">{fierroEncontrado.superficie || '0'} has</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Column: Liquidación */}
-          <div className="lg:col-span-7 space-y-4">
-            {fierroValidado && fierroEncontrado ? (
-              <div className="bg-white rounded-2xl p-6 border border-stone-200 shadow-sm space-y-6">
-                {/* Profile Header */}
-                <div className="flex items-center justify-between pb-5 border-b border-stone-100">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-stone-900 to-stone-800 text-amber-400 flex items-center justify-center font-cinzel font-black text-xl shadow-md shrink-0 border border-amber-500/30">
-                      {fierroEncontrado.iniciales || '??'}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-stone-900 font-cinzel">
-                        {fierroEncontrado.nombre_productor}
-                      </h3>
-                      <p className="text-xs text-stone-600">
-                        {fierroEncontrado.predio || 'Sin predio'} · Ejido {fierroEncontrado.ejido || 'N/D'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-stone-400 uppercase font-bold block">Vigencia Actual:</span>
-                    <span className="text-xs font-mono font-bold text-stone-800">
-                      {fierroEncontrado.vigencia || 'N/D'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Nueva vigencia calculada */}
-                <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2.5">
-                  <Calendar size={16} className="text-emerald-700 shrink-0" />
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-emerald-800 block">Nueva Vigencia (Calculada):</span>
-                    <span className="font-mono font-extrabold text-emerald-900 text-sm">{nuevaVigencia}</span>
-                  </div>
-                </div>
-
-                {/* Conceptos */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                    Liquidación de Derechos Fiscales 2026:
-                  </h4>
-
-                  <div className="space-y-2">
-                    <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/50 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2.5">
-                        <CheckCircle2 size={16} className="text-blue-600" />
-                        <div>
-                          <p className="font-bold text-stone-900">Revalidación Anual de Fierro Quemador</p>
-                          <p className="text-[10px] text-stone-500">Cuota Reglamentaria Ejercicio 2026</p>
-                        </div>
-                      </div>
-                      <span className="font-mono font-extrabold text-stone-900">${REVALIDATION_FEE}.00</span>
-                    </div>
-
-                    <label className="p-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-between text-xs cursor-pointer transition-colors">
-                      <div className="flex items-center gap-2.5">
-                        <input
-                          type="checkbox"
-                          checked={includeLateFee}
-                          onChange={(e) => setIncludeLateFee(e.target.checked)}
-                          className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                        />
-                        <div>
-                          <p className="font-bold text-stone-900">Multa por Pago Extemporáneo</p>
-                          <p className="text-[10px] text-stone-500">Aplicable si el plazo reglamentario venció</p>
-                        </div>
-                      </div>
-                      <span className="font-mono font-bold text-stone-700">+${LATE_FEE}.00</span>
-                    </label>
-
-                    <label className="p-3 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-between text-xs cursor-pointer transition-colors">
-                      <div className="flex items-center gap-2.5">
-                        <input
-                          type="checkbox"
-                          checked={includeCertificate}
-                          onChange={(e) => setIncludeCertificate(e.target.checked)}
-                          className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                        />
-                        <div>
-                          <p className="font-bold text-stone-900">Emisión de Constancia Oficial de Refrendo</p>
-                          <p className="text-[10px] text-stone-500">Formato membretado y sellado para tránsito</p>
-                        </div>
-                      </div>
-                      <span className="font-mono font-bold text-stone-700">+${CERTIFICATE_FEE}.00</span>
-                    </label>
-                  </div>
-
-                  {/* Total Bar */}
-                  <div className="p-4 rounded-xl bg-stone-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
-                    <div>
-                      <span className="text-[10px] text-stone-400 uppercase font-bold block">
-                        Total Liquidación Tesorería:
-                      </span>
-                      <span className="text-xl font-mono font-extrabold text-amber-400">
-                        ${totalAmount}.00 MXN
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleGeneratePaymentOrder}
-                        disabled={isGeneratingOrder}
-                        className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
-                      >
-                        {isGeneratingOrder ? (
-                          <>
-                            <Loader2 size={16} className="animate-spin" />
-                            <span>Revalidando...</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck size={16} />
-                            <span>Revalidar y Generar Orden</span>
-                          </>
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowPrintModal(true)}
-                        className="px-3.5 py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-                        title="Imprimir Tarjetón"
-                      >
-                        <Printer size={16} />
-                        <span>Tarjetón</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl p-12 border border-stone-200 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-                  <RefreshCw size={24} />
-                </div>
-                <h3 className="text-base font-bold text-stone-800">Seleccione un Registro Ganadero</h3>
-                <p className="text-xs text-stone-500 max-w-sm mx-auto">
-                  Utilice el buscador de la izquierda para seleccionar al titular a quien se aplicará el refrendo anual y liquidación fiscal.
-                </p>
-              </div>
-            )}
+        {/* INFO BANNER */}
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+          <ShieldCheck className="w-5 h-5 text-blue-700 shrink-0 mt-0.5" />
+          <div className="text-xs text-blue-900 leading-relaxed">
+            <p className="font-bold text-blue-950">Flujo de Revalidación 2026</p>
+            <ol className="mt-1.5 space-y-1 ml-1 list-decimal list-inside text-[11px]">
+              <li>
+                <strong>Busque al productor</strong> en el padrón (por nombre, CURP, RFC, folio, ejido, etc.)
+              </li>
+              <li>
+                <strong>Verifique los datos</strong> con el productor presente (edite si es necesario) y marque los requisitos que trajo
+              </li>
+              <li>
+                <strong>Confirme la verificación</strong> para aplicar los cambios en el padrón
+              </li>
+              <li>
+                <strong>Genere el recibo de pago</strong> que se enviará a Finanzas para que pase a Tesorería
+              </li>
+            </ol>
           </div>
         </div>
 
-        {/* Modal: Tarjetón */}
-        {showPrintModal && fierroEncontrado && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/80 backdrop-blur-xs">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border-2 border-stone-800 shadow-2xl space-y-6">
-              <div className="text-center space-y-1 border-b border-stone-200 pb-4">
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-900">
-                  {municipalConfig.municipalityName}
-                </span>
-                <h2 className="text-lg font-black font-cinzel text-stone-900">
-                  CONSTANCIA Y TARJETÓN DE REVALIDACIÓN 2026
-                </h2>
-                <p className="text-xs text-stone-500">Dirección de Fomento Agropecuario y Desarrollo Rural</p>
-              </div>
+        {/* FASE 1: BUSCADOR */}
+        <div className="bg-white rounded-2xl p-5 border border-stone-200 shadow-sm space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+              1
+            </div>
+            <h2 className="text-sm font-bold text-stone-900">
+              Buscar Productor en el Padrón Municipal
+            </h2>
+            {registros.length > 0 && (
+              <span className="ml-auto text-[11px] text-stone-500 font-mono">
+                {registros.length} registros disponibles
+              </span>
+            )}
+          </div>
 
-              <div className="p-4 bg-stone-50 border border-stone-300 rounded-2xl space-y-3 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-stone-500">Titular del Fierro:</span>
-                  <strong className="text-stone-900 font-bold">{fierroEncontrado.nombre_productor}</strong>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-stone-500">Monograma Oficial:</span>
-                  <strong className="text-amber-800 font-cinzel font-black text-base">{fierroEncontrado.iniciales}</strong>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-stone-500">Predio y Ejido:</span>
-                  <span>{fierroEncontrado.predio}, Ejido {fierroEncontrado.ejido}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-stone-500">Folio de Registro:</span>
-                  <span className="font-mono font-bold text-stone-800">{fierroEncontrado.folio}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-stone-500">Nuevo Periodo Vigente:</span>
-                  <span className="font-mono font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
-                    {nuevaVigencia} (Refrendado)
-                  </span>
-                </div>
-              </div>
+          <RevalidacionBuscador
+            registros={registros}
+            onSelect={handleSelectProductor}
+            isLoading={isLoadingRegistros}
+            onRefresh={cargarRegistros}
+          />
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPrintModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-800 cursor-pointer"
-                >
-                  Cerrar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Printer size={16} />
-                  <span>Imprimir Tarjetón</span>
-                </button>
+          {fierroSeleccionado && !showVerificacion && (
+            <div className="mt-4 p-3 bg-emerald-50 border-2 border-emerald-300 rounded-xl flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs font-bold text-emerald-900">
+                  Productor seleccionado: {fierroSeleccionado.nombre_productor}
+                </p>
+                <p className="text-[11px] text-emerald-700 font-mono">
+                  Folio: {fierroSeleccionado.folio} · Vigencia: {fierroSeleccionado.vigencia || '—'}
+                </p>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* ESTADO: PROCESANDO */}
+        {isProcessing && (
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6 text-center">
+            <Loader2 className="w-8 h-8 text-amber-700 animate-spin mx-auto mb-3" />
+            <p className="text-sm font-bold text-amber-950">
+              Procesando revalidación...
+            </p>
+            <p className="text-xs text-amber-800 mt-1">
+              Actualizando REGISTROS · Guardando historial · Redirigiendo a Finanzas
+            </p>
           </div>
         )}
       </div>
+
+      {/* ═══ FASE 2: MODAL DE VERIFICACIÓN ═══ */}
+      {fierroSeleccionado && requisitosConfig && (
+        <ModalVerificacionRevalidacion
+          isOpen={showVerificacion}
+          onClose={() => {
+            setShowVerificacion(false);
+            setFierroSeleccionado(null);
+          }}
+          registro={fierroSeleccionado}
+          requisitos={requisitosConfig.requisitos}
+          onConfirm={handleConfirmarVerificacion}
+        />
+      )}
+
+      {/* ═══ FASE 3: MODAL DE RESULTADO ═══ */}
+      <ModalResultadoVerificacion
+        isOpen={showResultado}
+        onClose={handleCloseResultado}
+        exito={exito}
+        camposEditados={camposEditados}
+        requisitosMarcados={requisitosMarcados.length}
+        totalRequisitos={requisitosConfig?.requisitos.length || 0}
+        errores={erroresResultado}
+        onGenerarRecibo={handleGenerarRecibo}
+        onVolverAEditar={handleVolverAEditar}
+      />
     </div>
   );
 };

@@ -5,12 +5,20 @@ import { getCachedRegistros } from '../utils/googleSheetsIntegration';
 export interface DuplicateResult {
   found: boolean;
   folio?: string;
-  matchField?: 'nombre' | 'curp' | 'ine';
+  matchField?: 'nombre' | 'curp' | 'rfc' | 'ine';
   existingRecord?: HistoricalRecord;
   isChecking: boolean;
 }
 
 const EMPTY_RESULT: DuplicateResult = { found: false, isChecking: false };
+
+// FIX_DUPLICADO_RFC: RFC genericos (publico en general) no deben bloquear el alta
+const RFC_GENERICOS = new Set(['XAXX010101000', 'XEXX010101000', 'XAXX010101000']);
+
+function isRfcUtil(rfc: string): boolean {
+  const r = (rfc || '').trim().toUpperCase();
+  return r.length >= 12 && !RFC_GENERICOS.has(r) && !r.startsWith('XAXX') && !r.startsWith('XEXX');
+}
 
 function normalizeName(name: string): string {
   return name
@@ -28,12 +36,14 @@ export function useDuplicateCheck(producerData: ProducerData, delayMs: number = 
 
   useEffect(() => {
     const curp = (producerData.curp || '').trim().toUpperCase();
+    const rfc = (producerData.rfc || '').trim().toUpperCase();
     const ine = (producerData.ine || '').trim().toUpperCase();
     const nombre = (producerData.fullName || '').trim();
+    const folioActual = (producerData.folio || '').trim().toUpperCase();
 
-    if (!curp && !ine && !nombre) { setResult(EMPTY_RESULT); return; }
+    if (!curp && !ine && !nombre && !isRfcUtil(rfc)) { setResult(EMPTY_RESULT); return; }
 
-    const queryKey = curp + '|' + ine + '|' + normalizeName(nombre);
+    const queryKey = curp + '|' + rfc + '|' + ine + '|' + normalizeName(nombre) + '|' + folioActual;
     if (queryKey === lastQueryRef.current) return;
     lastQueryRef.current = queryKey;
 
@@ -45,9 +55,16 @@ export function useDuplicateCheck(producerData: ProducerData, delayMs: number = 
         if (!registros || registros.length === 0) { setResult(EMPTY_RESULT); return; }
         const nombreNorm = normalizeName(nombre);
         for (const r of registros) {
+          // FIX_DUPLICADO_EDIT: ignorar el propio registro que se esta editando
+          if (folioActual && String(r.folio || '').trim().toUpperCase() === folioActual) continue;
           // FIX_STRING_TRIM: r.curp puede ser numero (Sheets auto-detecta tipos)
           if (curp && r.curp && String(r.curp || '').trim().toUpperCase() === curp) {
             setResult({ found: true, folio: r.folio, matchField: 'curp', existingRecord: r, isChecking: false });
+            return;
+          }
+          // FIX_DUPLICADO_RFC: coincidencia por RFC (ignora genericos)
+          if (isRfcUtil(rfc) && r.rfc && String(r.rfc || '').trim().toUpperCase() === rfc) {
+            setResult({ found: true, folio: r.folio, matchField: 'rfc', existingRecord: r, isChecking: false });
             return;
           }
           // FIX_STRING_TRIM: r.ine puede ser numero (Sheets auto-detecta tipos)
@@ -70,7 +87,7 @@ export function useDuplicateCheck(producerData: ProducerData, delayMs: number = 
     }, delayMs);
 
     return () => clearTimeout(timer);
-  }, [producerData.curp, producerData.ine, producerData.fullName, delayMs]);
+  }, [producerData.curp, producerData.rfc, producerData.ine, producerData.fullName, producerData.folio, delayMs]);
 
   return result;
 }

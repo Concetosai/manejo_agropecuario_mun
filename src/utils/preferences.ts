@@ -48,3 +48,31 @@ export function clearAllPreferences(): void {
     console.warn('[preferences] Error limpiando preferencias:', err);
   }
 }
+// =========================================================================
+// DÍAS DE VIGENCIA DEL PASE PRE-CERTIFICADO
+// =========================================================================
+const KEY_DIAS_VIGENCIA_PRE_CERT = 'panuco_dias_vigencia_pre_cert_v1';
+
+export function getDiasVigenciaPreCertificado(): number {
+  try {
+    const raw = localStorage.getItem(KEY_DIAS_VIGENCIA_PRE_CERT);
+    if (raw === null) return 15;
+    const n = parseInt(raw, 10);
+    return isNaN(n) || n <= 0 ? 15 : n;
+  } catch {
+    return 15;
+  }
+}
+
+export function setDiasVigenciaPreCertificado(dias: number): void {
+  try {
+    localStorage.setItem(KEY_DIAS_VIGENCIA_PRE_CERT, String(dias));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('panuco_preferences_changed', {
+        detail: { key: 'dias_vigencia_pre_cert', value: dias },
+      }));
+    }
+  } catch (err) {
+    console.warn('[preferences] No se pudo guardar dias_vigencia_pre_cert:', err);
+  }
+}

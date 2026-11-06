@@ -58,6 +58,13 @@ async function captureElementToCanvas(element: HTMLElement): Promise<HTMLCanvasE
     logging: false,
     imageTimeout: 15000,
     onclone: (clonedDoc) => {
+          const clonedCert = clonedDoc.querySelector('.print-page-letter') as HTMLElement;
+          if (clonedCert) {
+            clonedCert.style.width = '800px';
+            clonedCert.style.height = '1040px';
+            clonedCert.style.minWidth = '800px';
+            clonedCert.style.minHeight = '1040px';
+          }
       // Ensure elements marked with no-print or print-only behave as on paper
       const noPrintElements = clonedDoc.querySelectorAll('.no-print');
       noPrintElements.forEach((el) => {

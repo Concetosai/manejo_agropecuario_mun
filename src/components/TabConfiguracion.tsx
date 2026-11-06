@@ -50,7 +50,12 @@ import {
 import { BiometricEnrollmentModal } from './Biometrics/BiometricEnrollmentModal';
 import { BiometricVerificationModal } from './Biometrics/BiometricVerificationModal';
 import { SettingsFinanzasCatalogo } from './Finance/SettingsFinanzasCatalogo';
-import { getReciboFotoEnabled, setReciboFotoEnabled } from '../utils/preferences';
+import {
+  getReciboFotoEnabled,
+  setReciboFotoEnabled,
+  getDiasVigenciaPreCertificado,
+  setDiasVigenciaPreCertificado,
+} from '../utils/preferences';
 
 interface TabConfiguracionProps {
   municipalConfig: MunicipalConfig;
@@ -94,6 +99,7 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
   const [seriesConfig, setSeriesConfig] = useState<SeriesNumberingConfig>(() => getStoredSeriesConfig());
   // FIX_RECIBO_FOTO: Estado del toggle de foto del recibo sellado
   const [reciboFotoEnabled, setReciboFotoEnabledState] = useState<boolean>(() => getReciboFotoEnabled());
+  const [diasVigenciaPase, setDiasVigenciaPase] = useState<number>(() => getDiasVigenciaPreCertificado());
 
   const handleFieldChange = (field: keyof MunicipalConfig, value: string) => {
     let finalVal = value;
@@ -1123,6 +1129,46 @@ export const TabConfiguracion: React.FC<TabConfiguracionProps> = ({
                       <span className={reciboFotoEnabled ? 'text-[10px] font-bold text-emerald-700' : 'text-[10px] font-bold text-stone-500'}>
                         {reciboFotoEnabled ? 'ACTIVADO' : 'DESACTIVADO'}
                       </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Panel: Dias de vigencia del pase pre-certificado */}
+              <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 mt-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">📅</span>
+                      <strong className="text-sm font-bold text-stone-900">
+                        Vigencia del pase pre-certificado
+                      </strong>
+                    </div>
+                    <p className="text-xs text-stone-600 leading-relaxed pl-7">
+                      Numero de dias habiles (lunes a viernes, excluyendo festivos oficiales) que dura un pase pre-certificado antes de expirar automaticamente.
+                    </p>
+                    <div className="flex items-center gap-3 pl-7 mt-3">
+                      <input
+                        type="number"
+                        min={1}
+                        max={90}
+                        value={diasVigenciaPase}
+                        onChange={(e) => {
+                          const val = Math.max(1, Math.min(90, parseInt(e.target.value, 10) || 15));
+                          setDiasVigenciaPase(val);
+                          setDiasVigenciaPreCertificado(val);
+                          setNotice('Vigencia actualizada a ' + val + ' dias habiles.');
+                          setTimeout(() => setNotice(null), 3000);
+                        }}
+                        className="w-24 px-3 py-2 text-sm font-mono font-bold border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 bg-white text-center"
+                      />
+                      <span className="text-xs text-stone-600">dias habiles (1-90)</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 pt-1">
+                    <div className="px-3 py-1 bg-amber-100 border border-amber-300 rounded-md text-center">
+                      <span className="text-2xl font-black font-mono text-amber-900 block">{diasVigenciaPase}</span>
+                      <span className="text-[10px] uppercase font-bold text-amber-800">dias</span>
                     </div>
                   </div>
                 </div>

@@ -17,6 +17,7 @@ import {
   ExternalLink,
   ShieldCheck,
   ShieldAlert,
+  Check,
 } from 'lucide-react';
 
 interface VectorComparisonModalProps {
@@ -36,7 +37,6 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
 }) => {
   const [selectedDetail, setSelectedDetail] = useState<VectorComparisonResult | null>(null);
 
-  // Compute similarity analysis reactively
   const analysis = useMemo(() => {
     if (!sourceRecord) return null;
     return runVectorSimilarityAnalysis(sourceRecord, allRecords, 0.75);
@@ -45,6 +45,13 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
   if (!isOpen || !sourceRecord || !analysis) return null;
 
   const sourceVec = sourceRecord.vector_64d || sourceRecord.brandVector || [];
+
+  // 🔥 FIX_NUEVO: selecciona el candidato y lo envía al buscador principal
+  const handleSelectCandidate = (record: HistoricalRecord) => {
+    if (onSelectCandidateForCertificate) {
+      onSelectCandidateForCertificate(record);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fadeIn">
@@ -146,7 +153,7 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
           {/* VIEW A: SIDE-BY-SIDE 8x8 DETAIL AUDIT */}
           {selectedDetail ? (
             <div className="space-y-5 animate-fadeIn">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setSelectedDetail(null)}
@@ -170,9 +177,27 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
                 </div>
               </div>
 
+              {/* 🔥 NUEVO: botón para cargar el candidato directamente */}
+              <div className="p-3 bg-emerald-50 border-2 border-emerald-400 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-emerald-950">
+                  <Check className="w-5 h-5 text-emerald-700 shrink-0" />
+                  <p className="text-xs sm:text-sm font-semibold">
+                    ¿Deseas cargar el registro <strong className="font-mono">{selectedDetail.candidate.folio}</strong> ({selectedDetail.candidate.ownerName}) en el buscador y en el certificado?
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSelectCandidate(selectedDetail.candidate)}
+                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg shadow transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>✅ Cargar este registro</span>
+                </button>
+              </div>
+
               {/* Side by Side Grid Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Lado 1: Fierro Original */}
+                {/* Lado 1 */}
                 <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs space-y-3">
                   <div className="flex items-center justify-between border-b border-stone-100 pb-2">
                     <span className="text-[11px] uppercase tracking-wider font-bold text-stone-500">
@@ -208,7 +233,6 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Matriz 8x8 Original */}
                   <div>
                     <span className="text-[10px] font-mono uppercase text-stone-400 block mb-1">
                       Matriz 8x8 Normalizada (Sobel)
@@ -240,9 +264,9 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
                   </div>
                 </div>
 
-                {/* Lado 2: Fierro Similar Detectado */}
-                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs space-y-3">
-                  <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+                {/* Lado 2 */}
+                <div className="bg-white p-4 rounded-xl border-2 border-amber-400 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-amber-100 pb-2">
                     <span className="text-[11px] uppercase tracking-wider font-bold text-amber-800">
                       Fierro Similar Detectado (B)
                     </span>
@@ -282,7 +306,6 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Matriz 8x8 Candidato */}
                   <div>
                     <span className="text-[10px] font-mono uppercase text-stone-400 block mb-1">
                       Matriz 8x8 Normalizada (Sobel)
@@ -314,10 +337,20 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
                       )}
                     </div>
                   </div>
+
+                  {/* 🔥 NUEVO: botón para cargar directamente desde el detalle */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectCandidate(selectedDetail.candidate)}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>✅ Cargar este registro en el buscador y certificado</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Leyenda y Diagnóstico de Discrepancia */}
+              {/* Leyenda */}
               <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-2 text-stone-700">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/70 pb-2">
                   <div className="flex items-center gap-2">
@@ -339,7 +372,7 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
               </div>
             </div>
           ) : (
-            /* VIEW B: LIST OF MATCHES OR SUCCESS EMPTY STATE */
+            /* VIEW B: LIST OF MATCHES */
             <div className="space-y-4">
               {analysis.hasAnyMatch ? (
                 <>
@@ -347,7 +380,7 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
                     <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                     <div>
                       <strong className="block">Alerta de Similitud Vectorial:</strong>
-                      Se detectaron <strong>{analysis.matches.length}</strong> registro(s) en el Padrón Municipal con similitud igual o superior al 75.0%. Haga clic en <strong>"Ver Detalles de Comparación"</strong> para auditar visualmente las matrices 8x8 lado a lado.
+                      Se detectaron <strong>{analysis.matches.length}</strong> registro(s) en el Padrón Municipal con similitud igual o superior al 75.0%. Puedes hacer clic en <strong>"Ver Detalles"</strong> para auditar, o en <strong>"✅ Cargar"</strong> para llevar el registro directo al buscador.
                     </div>
                   </div>
 
@@ -398,8 +431,7 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Similarity badge and detail button */}
-                        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-stone-100">
+                        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-stone-100 flex-wrap">
                           <div className="text-right">
                             <span
                               className={`px-3 py-1 rounded-lg text-xs font-black font-mono-data inline-block ${
@@ -408,7 +440,7 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
                                   : 'bg-amber-100 text-amber-900 border border-amber-300'
                               }`}
                             >
-                              {match.similarityPct}% de similitud
+                              {match.similarityPct}%
                             </span>
                             <span className="text-[10px] text-stone-400 block mt-0.5">
                               {match.mismatchedCellCount} celdas dif.
@@ -418,11 +450,22 @@ export const VectorComparisonModal: React.FC<VectorComparisonModalProps> = ({
                           <button
                             type="button"
                             onClick={() => setSelectedDetail(match)}
-                            className="px-3.5 py-2 text-xs font-bold text-stone-900 bg-amber-400 hover:bg-amber-300 rounded-lg shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                            className="px-3 py-2 text-xs font-bold text-stone-900 bg-amber-400 hover:bg-amber-300 rounded-lg shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
                             title="Auditar matrices numéricas 8x8 lado a lado"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             <span>Ver Detalles</span>
+                          </button>
+
+                          {/* 🔥 NUEVO: botón de selección directa */}
+                          <button
+                            type="button"
+                            onClick={() => handleSelectCandidate(match.candidate)}
+                            className="px-3 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                            title="Cargar este registro en el buscador y certificado"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Cargar</span>
                           </button>
                         </div>
                       </div>

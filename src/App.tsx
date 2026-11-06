@@ -75,6 +75,11 @@ export const INITIAL_BRAND_CONFIG: BrandConfig = {
 export default function App() {
   const [activeTab, setActiveTab] = useState<AppTab>('hub');
 
+  // FIX_SCROLL_TOP: Hacer scroll al inicio cada vez que se cambia de modulo
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [activeTab]);
+
   // FIX_BOTON_VOLVER: recordar el tab desde donde se navego al certificado
   const lastTabBeforeCertificadoRef = React.useRef<AppTab>('hub');
 
@@ -177,7 +182,7 @@ export default function App() {
       phone: record.phone,
       municipio: 'Pánuco',
       ejido: record.ejido,
-      email: `${record.ownerName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '.')}@gmail.com`,
+      email: `${((record as any).ownerName || (record as any).fullName || 'productor').toLowerCase().trim().replace(/[^a-z0-9]+/g, '.')}@gmail.com`,
       propertyName: record.propertyName,
       surfaceHectares: record.surfaceHectares,
       tenureType: record.tenureType,
@@ -481,6 +486,32 @@ export default function App() {
               setFinancePreloadedOrder(payload || null);
               setActiveTab('finanzas');
             }}
+                        onGoToCertificadoConProductor={(record) => {
+              // 🔥 FIX_LIMPIAR_CERT_VIEJO: limpiar certificado viejo para forzar regeneración
+              console.log('%c[App] Limpiando certificado viejo antes de regenerar', 'color: #f59e0b', record.folio);
+
+              setProducerData((prev) => ({
+                ...prev,
+                certificadoImagenUrl: '',
+                certificadoDriveUrl: '',
+              }));
+
+              // Limpiar preloads de finanzas para evitar redirect indeseado
+              setFinanceInitialCategory(null);
+              setFinancePreloadedOrder(null);
+
+              handleLoadRecordIntoCertificate(record as HistoricalRecord);
+              lastTabBeforeCertificadoRef.current = 'revalidacion';
+              setCertificadoMode('preview');
+              setActiveTab('certificado');
+
+              // 🔥 FIX_VER_CERT_AUTO_CONSOLIDADO: tras 10s cambiar a modo consolidado
+              setTimeout(() => {
+                console.log('%c[App] 🎉 Cambiando a modo CONSOLIDADO — el certificado ya fue regenerado', 'color: #22c55e; font-weight: bold');
+                setCertificadoMode('consolidated');
+              }, 10000);
+            }}
+            
             municipalConfig={municipalConfig}
             currentUser={currentUser}
           />
@@ -563,6 +594,7 @@ export default function App() {
 
         {activeTab === 'certificado' && (
           <TabCertificado
+            key={"cert-" + (producerData.folio || "empty")}
             producerData={producerData}
             brandConfig={brandConfig}
             municipalConfig={municipalConfig}
@@ -657,6 +689,7 @@ export default function App() {
 
         {(activeTab === 'finanzas' || (activeTab as any) === 'finance') && (
           <FinanceManager
+            key={"fin-" + (financePreloadedOrder?.folio || financeInitialCategory || "empty")}
             currentProducer={producerData}
             currentUser={currentUser}
             municipalConfig={municipalConfig}
@@ -664,11 +697,53 @@ export default function App() {
             preloadedOrderData={financePreloadedOrder}
             onBackToHub={() => setActiveTab('hub')}
             onGoToCertificado={() => {
-              // FIX_IR_CERTIFICADO: recordar que venimos de finanzas antes de ir al certificado
+              // 🔥 FIX_VER_CERT_CONSOLIDADO: desde Finanzas, ver el certificado en modo CONSOLIDADO
+              console.log('%c[App] Navegando a TabCertificado en modo CONSOLIDADO desde Finanzas', 'color: #22c55e; font-weight: bold');
               lastTabBeforeCertificadoRef.current = 'finanzas';
+              setCertificadoMode('consolidated');
               setActiveTab('certificado');
             }}
             onVerCertificadoImagen={handleVerCertificadoImagen}
+            onCerrarCiclo={() => {
+              // 🔥 FIX_CIERRE_CICLO_FINANZAS: limpiar TODO al cerrar desde "Entregar Certificado"
+              console.log('%c[App] 🎉 Cerrando ciclo desde Finanzas — limpiando registro completo', 'color: #22c55e; font-weight: bold');
+
+              recordAuditLog({
+                actionType: 'REGISTRO_MODIFICADO',
+                folioAffected: producerData.folio || 'SIN-FOLIO',
+                producerAffected: producerData.fullName || 'SIN-TITULAR',
+                details: 'Ciclo cerrado desde el módulo de Finanzas (entrega de documentos completada).',
+              });
+
+              // Limpiar formulario + marca
+              setProducerData(EMPTY_PRODUCER_DATA);
+              setBrandConfig(INITIAL_BRAND_CONFIG);
+
+              // Limpiar borradores locales
+              try {
+                clearCurrentSessionDraft();
+                clearAllDraftVersions();
+                try {
+                  localStorage.removeItem('panuco_monogram_linked');
+                } catch {}
+                console.log('%c[Ciclo] Borradores locales limpiados correctamente', 'color: #22c55e; font-weight: bold');
+              } catch (err) {
+                console.warn('[Ciclo] Error limpiando borradores:', err);
+              }
+
+              // Limpiar preloads de finanzas
+              setFinanceInitialCategory(null);
+              setFinancePreloadedOrder(null);
+
+              // Resetear refs/modo
+              lastTabBeforeCertificadoRef.current = 'hub';
+              setCertificadoMode('preview');
+
+              // Navegar al hub
+              setActiveTab('hub');
+
+              console.log('%c[Ciclo] ✅ Formulario limpiado. Volviendo al hub.', 'color: #22c55e; font-weight: bold');
+            }}
           />
         )}
       </main>

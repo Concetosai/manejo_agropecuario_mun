@@ -1,40 +1,20 @@
 /**
  * ============================================================================
  * API DE PÁNUCO · REGISTRO DE FIERROS QUEMADORES
- * VERSIÓN 4.1 · 10/Oct/2026
+ * VERSIÓN 4.5 · 15/Oct/2026
+ * 
+ * CAMBIOS v4.5:
+ *   - ✅ FIX: action puede venir de query string O del body
+ *   - ✅ LOGS: diagnóstico de payload recibido
+ * 
+ * CAMBIOS v4.3:
+ *   - ✅ NUEVO: guardarChecklistRequisitos — Guarda checklist de requisitos
+ *   - ✅ NUEVO: registrarRevalidacionHistorial — Historial de revalidaciones
+ *   - ✅ NUEVO: obtenerHistorialRevalidaciones — Consultar historial
  * 
  * CAMBIOS v4.1:
- *   - ✅ NUEVO: subirArchivo — Sube PDFs a Google Drive
- *   - ✅ NUEVO: actualizarUrlsRecibo — Actualiza URLs de recibo en PAGOS
- *   - ✅ Columnas de evidencias completas (url_miniatura_fierro, url_reporte,
- *      url_recibo_cloudinary, url_recibo_drive, url_constancia_cloudinary,
- *      url_constancia_drive, url_guia_cloudinary, url_guia_drive)
- * 
- * CAMBIOS v4.0:
- *   - ✅ confirmarPagoRecibido — Cierra orden con datos de recibo
- *   - ✅ marcarEntregaCompletada — Marca entrega de docs
- * 
- * Endpoints:
- *   GET  ?action=health
- *   POST ?action=guardarRegistro
- *   POST ?action=subirImagen
- *   POST ?action=subirArchivo                   ← NUEVO v4.1
- *   GET  ?action=obtenerRegistros
- *   GET  ?action=obtenerRegistro&folio=XXX
- *   POST ?action=guardarPago
- *   GET  ?action=obtenerPagos
- *   POST ?action=actualizarPagoEstatus
- *   POST ?action=eliminarPago
- *   POST ?action=confirmarPagoRecibido
- *   POST ?action=marcarEntregaCompletada
- *   POST ?action=actualizarUrlsRecibo           ← NUEVO v4.1
- *   POST ?action=revalidarRegistro
- *   POST ?action=cancelarRegistro
- *   POST ?action=emitirConstancia
- *   GET  ?action=buscarPropietario&q=XXX
- *   POST ?action=registrarDeguello
- *   GET  ?action=obtenerConstancias
- *   GET  ?action=obtenerDeguellos
+ *   - subirArchivo — Sube PDFs a Google Drive
+ *   - actualizarUrlsRecibo — Actualiza URLs de recibo en PAGOS
  * ============================================================================
  */
 
@@ -60,7 +40,7 @@ const COLUMNAS_REGISTROS = [
   'url_ine', 'url_ficha', 'url_fierro', 'url_certificado',
   'url_foto_titular', 'url_firma',
   'estatus', 'fecha_baja', 'motivo_baja', 'operador_baja',
-  'url_miniatura_fierro', 'url_reporte', 'url_certificado_imagen'
+  'url_miniatura_fierro', 'url_reporte', 'url_certificado_imagen', 'qr_code'
 ];
 
 const COLUMNAS_PAGOS = [
@@ -98,12 +78,21 @@ function doGet(e)  { return handleRequest(e, 'GET'); }
 function handleRequest(e, method) {
   try {
     const params = e.parameter || {};
-    const action = params.action;
     
     let payload = {};
     if (method === 'POST' && e.postData && e.postData.contents) {
       try { payload = JSON.parse(e.postData.contents); } catch (err) { payload = {}; }
     }
+    
+    // FIX_ACTION: action puede venir en query string O en el body
+    const action = params.action || payload.action;
+    
+    // LOGS DE DIAGNÓSTICO
+    Logger.log('[handleRequest] method=' + method);
+    Logger.log('[handleRequest] e.parameter=' + JSON.stringify(e.parameter));
+    Logger.log('[handleRequest] e.postData=' + (e.postData ? e.postData.contents.substring(0, 300) : 'NULL'));
+    Logger.log('[handleRequest] action resuelto=' + action);
+    Logger.log('[handleRequest] payload=' + JSON.stringify(payload).substring(0, 300));
     
     if (action !== 'health') {
       const token = params.token || payload.token || null;
@@ -120,7 +109,7 @@ function handleRequest(e, method) {
     }
     
     switch (action) {
-      case 'health':                  return jsonResponse({ status: 'ok', service: 'panuco-fierros-api', version: '4.1', timestamp: new Date().toISOString() });
+      case 'health':                  return jsonResponse({ status: 'ok', service: 'panuco-fierros-api', version: '4.5', timestamp: new Date().toISOString() });
       case 'guardarRegistro':         return guardarRegistro(payload);
       case 'subirImagen':             return subirImagen(payload);
       case 'subirArchivo':            return subirArchivo(payload);
@@ -134,6 +123,13 @@ function handleRequest(e, method) {
       case 'marcarEntregaCompletada': return marcarEntregaCompletada(payload);
       case 'actualizarUrlsRecibo':    return actualizarUrlsRecibo(payload);
       case 'actualizarUrlCertificado': return actualizarUrlCertificado(payload);
+      case 'guardarChecklistRequisitos': return guardarChecklistRequisitos(payload);
+      case 'registrarRevalidacionHistorial': return registrarRevalidacionHistorial(payload);
+      case 'obtenerHistorialRevalidaciones': return obtenerHistorialRevalidaciones(params);
+      case 'guardarPasePreCertificado':  return jsonResponse(guardarPasePreCertificado(payload.data || payload));
+      case 'listarPasesPreCertificados': return jsonResponse(listarPasesPreCertificados());
+      case 'actualizarEstadoPase':       return jsonResponse(actualizarEstadoPase(payload.folio_pase, payload.nuevoEstado, payload.folio_certificado_vinculado));
+      case 'actualizarUrlDocumentoPase': return jsonResponse(actualizarUrlDocumentoPase(payload.folio_pase, payload.url_documento_png));
       case 'revalidarRegistro':       return revalidarRegistro(payload);
       case 'cancelarRegistro':        return cancelarRegistro(payload);
       case 'emitirConstancia':        return emitirConstancia(payload);
@@ -142,7 +138,13 @@ function handleRequest(e, method) {
       case 'obtenerConstancias':      return obtenerConstancias(params);
       case 'obtenerDeguellos':        return obtenerDeguellos(params);
       default:
-        return jsonResponse({ success: false, error: 'Action no reconocida: ' + action });
+        return jsonResponse({
+          success: false,
+          error: 'Action no reconocida: ' + action,
+          received_action: action,
+          received_params: Object.keys(params),
+          received_payload_keys: Object.keys(payload)
+        });
     }
   } catch (err) {
     return jsonResponse({ success: false, error: err.message || String(err) });
@@ -156,33 +158,42 @@ function handleRequest(e, method) {
 function guardarRegistro(payload) {
   const sheet = getSheet(SHEET_NAME);
   const data = payload.data || payload;
-  
+
+  asegurarColumna(sheet, 'qr_code');
+
   if (data.vector_64d && Array.isArray(data.vector_64d)) {
     data.vector_64d = JSON.stringify(data.vector_64d);
   }
-  
-  const row = COLUMNAS_REGISTROS.map(function(col) {
+
+  // FIX_COLUMNAS_DINAMICAS: escribir por NOMBRE de encabezado, no por posición.
+  // La hoja REGISTROS tiene una columna vacía entre url_reporte y
+  // url_certificado_imagen; escribir por posición desplazaba url_certificado_imagen
+  // y qr_code una columna a la izquierda (el QR terminaba bajo la columna del
+  // certificado y se perdía). Con headers reales el mapeo siempre coincide.
+  const headers = getSheetHeaders(sheet);
+  const existing = buscarFilaPorFolio(SHEET_NAME, data.folio);
+
+  if (existing > 0) {
+    const existingValues = sheet.getRange(existing, 1, 1, headers.length).getValues()[0];
+    headers.forEach(function(col, i) {
+      if (!col) return; // columna sin encabezado: no tocar
+      if (data[col] !== undefined && data[col] !== null) {
+        existingValues[i] = data[col];
+      }
+    });
+    sheet.getRange(existing, 1, 1, headers.length).setValues([existingValues]);
+    return jsonResponse({ success: true, action: 'updated', folio: data.folio, row: existing });
+  }
+
+  const row = headers.map(function(col) {
+    if (!col) return '';
     var val = data[col];
     if (col === 'fecha_captura' && !val) return new Date().toISOString();
     if (col === 'estatus' && !val) return 'ACTIVO';
     return val !== undefined && val !== null ? val : '';
   });
-  
-  const existing = buscarFilaPorFolio(SHEET_NAME, data.folio);
-  if (existing > 0) {
-    const existingValues = sheet.getRange(existing, 1, 1, COLUMNAS_REGISTROS.length).getValues()[0];
-    for (var i = 0; i < COLUMNAS_REGISTROS.length; i++) {
-      var col = COLUMNAS_REGISTROS[i];
-      if (data[col] !== undefined && data[col] !== null) {
-        existingValues[i] = data[col];
-      }
-    }
-    sheet.getRange(existing, 1, 1, COLUMNAS_REGISTROS.length).setValues([existingValues]);
-    return jsonResponse({ success: true, action: 'updated', folio: data.folio, row: existing });
-  } else {
-    sheet.appendRow(row);
-    return jsonResponse({ success: true, action: 'inserted', folio: data.folio, row: sheet.getLastRow() });
-  }
+  sheet.appendRow(row);
+  return jsonResponse({ success: true, action: 'inserted', folio: data.folio, row: sheet.getLastRow() });
 }
 
 function obtenerRegistros(params) {
@@ -200,6 +211,7 @@ function obtenerRegistros(params) {
     .map(function(row) {
       var obj = {};
       headers.forEach(function(h, i) {
+        if (!h) return; // ignorar columna sin encabezado
         var val = row[i];
         if (h === 'vector_64d' && val && typeof val === 'string') {
           try { val = JSON.parse(val); } catch (e) { val = null; }
@@ -238,6 +250,7 @@ function obtenerRegistro(folio) {
   
   var registro = {};
   headers.forEach(function(h, i) {
+    if (!h) return; // ignorar columna sin encabezado
     var val = values[i];
     if (h === 'vector_64d' && val && typeof val === 'string') {
       try { val = JSON.parse(val); } catch (e) { val = null; }
@@ -443,9 +456,6 @@ function marcarEntregaCompletada(payload) {
   });
 }
 
-/**
- * NUEVO v4.1: Actualiza las URLs del recibo (Cloudinary + Drive) en PAGOS
- */
 function actualizarUrlsRecibo(payload) {
   const data = payload.data || payload;
   
@@ -488,26 +498,37 @@ function actualizarUrlsRecibo(payload) {
 // ============================================================================
 
 function actualizarUrlCertificado(payload) {
-  const data = payload.data || payload;
-  const folio = data.folio;
-  const urlCertificadoImagen = data.url_certificado_imagen;
+  try {
+    const data = payload.data || payload;
+    const folio = data.folio;
+    const urlCertificadoImagen = data.url_certificado_imagen;
 
-  if (!folio) return jsonResponse({ success: false, error: 'Falta folio' });
-  if (!urlCertificadoImagen) return jsonResponse({ success: false, error: 'Falta URL del certificado' });
+    Logger.log('[actualizarUrlCertificado] folio=' + folio + ' url=' + urlCertificadoImagen);
 
-  const sheet = getSheet(SHEET_NAME);
-  const row = buscarFilaPorFolio(SHEET_NAME, folio);
-  if (row <= 0) return jsonResponse({ success: false, error: 'Registro no encontrado: ' + folio });
+    if (!folio) return jsonResponse({ success: false, error: 'Falta folio' });
+    if (!urlCertificadoImagen) return jsonResponse({ success: false, error: 'Falta URL del certificado' });
 
-  const col = asegurarColumna(sheet, 'url_certificado_imagen');
-  sheet.getRange(row, col).setValue(urlCertificadoImagen || '');
+    const sheet = getSheet(SHEET_NAME);
+    const row = buscarFilaPorFolio(SHEET_NAME, folio);
+    if (row <= 0) return jsonResponse({ success: false, error: 'Registro no encontrado: ' + folio });
 
-  return jsonResponse({
-    success: true,
-    action: 'url_certificado_imagen_actualizada',
-    folio: folio,
-    row: row
-  });
+    const col = asegurarColumna(sheet, 'url_certificado_imagen');
+    sheet.getRange(row, col).setValue(urlCertificadoImagen || '');
+
+    Logger.log('[actualizarUrlCertificado] OK folio=' + folio + ' row=' + row + ' col=' + col);
+
+    return jsonResponse({
+      success: true,
+      action: 'url_certificado_imagen_actualizada',
+      folio: folio,
+      row: row,
+      col: col,
+      url: urlCertificadoImagen
+    });
+  } catch (err) {
+    Logger.log('[actualizarUrlCertificado] ERROR: ' + err.message);
+    return jsonResponse({ success: false, error: err.message || String(err) });
+  }
 }
 
 function revalidarRegistro(payload) {
@@ -518,10 +539,10 @@ function revalidarRegistro(payload) {
   const row = buscarFilaPorFolio(SHEET_NAME, data.folio);
   if (row <= 0) return jsonResponse({ success: false, error: 'Registro no encontrado: ' + data.folio });
   
-  const colVigencia = COLUMNAS_REGISTROS.indexOf('vigencia') + 1;
-  const colFechaExp = COLUMNAS_REGISTROS.indexOf('fecha_expedicion') + 1;
-  const colOperador = COLUMNAS_REGISTROS.indexOf('operador') + 1;
-  const colEstatus = COLUMNAS_REGISTROS.indexOf('estatus') + 1;
+  const colVigencia = asegurarColumna(sheet, 'vigencia');
+  const colFechaExp = asegurarColumna(sheet, 'fecha_expedicion');
+  const colOperador = asegurarColumna(sheet, 'operador');
+  const colEstatus = asegurarColumna(sheet, 'estatus');
   
   if (data.fecha_nueva_vigencia) {
     sheet.getRange(row, colVigencia).setValue(data.fecha_nueva_vigencia);
@@ -550,10 +571,10 @@ function cancelarRegistro(payload) {
   const row = buscarFilaPorFolio(SHEET_NAME, data.folio);
   if (row <= 0) return jsonResponse({ success: false, error: 'Registro no encontrado: ' + data.folio });
   
-  const colEstatus = COLUMNAS_REGISTROS.indexOf('estatus') + 1;
-  const colFechaBaja = COLUMNAS_REGISTROS.indexOf('fecha_baja') + 1;
-  const colMotivoBaja = COLUMNAS_REGISTROS.indexOf('motivo_baja') + 1;
-  const colOperadorBaja = COLUMNAS_REGISTROS.indexOf('operador_baja') + 1;
+  const colEstatus = asegurarColumna(sheet, 'estatus');
+  const colFechaBaja = asegurarColumna(sheet, 'fecha_baja');
+  const colMotivoBaja = asegurarColumna(sheet, 'motivo_baja');
+  const colOperadorBaja = asegurarColumna(sheet, 'operador_baja');
   
   const estatusActual = String(sheet.getRange(row, colEstatus).getValue() || '');
   if (estatusActual === 'CANCELADO') {
@@ -650,10 +671,10 @@ function buscarPropietario(params) {
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   
-  const idxCurp = COLUMNAS_REGISTROS.indexOf('curp');
-  const idxRfc = COLUMNAS_REGISTROS.indexOf('rfc');
-  const idxNombre = COLUMNAS_REGISTROS.indexOf('nombre_productor');
-  const idxFolio = COLUMNAS_REGISTROS.indexOf('folio');
+  const idxCurp = headers.indexOf('curp');
+  const idxRfc = headers.indexOf('rfc');
+  const idxNombre = headers.indexOf('nombre_productor');
+  const idxFolio = headers.indexOf('folio');
   
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
@@ -665,6 +686,7 @@ function buscarPropietario(params) {
     if (curp === q || rfc === q || folio === q || nombre.indexOf(q) > -1) {
       var registro = {};
       headers.forEach(function(h, j) {
+        if (!h) return; // ignorar columna sin encabezado
         var val = row[j];
         if (h === 'vector_64d' && val && typeof val === 'string') {
           try { val = JSON.parse(val); } catch (e) { val = null; }
@@ -890,14 +912,9 @@ function subirImagen(payload) {
 }
 
 // ============================================================================
-// NUEVO v4.1 · SUBIR ARCHIVO A GOOGLE DRIVE
+// SUBIR ARCHIVO A GOOGLE DRIVE
 // ============================================================================
 
-/**
- * Sube un archivo (PDF, PNG) a Google Drive.
- * Crea la subcarpeta si no existe.
- * Devuelve la URL pública de descarga + preview.
- */
 function subirArchivo(payload) {
   const fileBase64 = payload.fileBase64;
   const filename = payload.filename || 'archivo_' + Date.now() + '.pdf';
@@ -993,8 +1010,6 @@ function subirArchivo(payload) {
 // HELPERS INTERNOS
 // ============================================================================
 
-// FIX_ASEGURAR_COLUMNA: garantiza que exista una columna en el encabezado (fila 1).
-// Si no existe, la agrega al final. Devuelve el índice de columna (1-based).
 function asegurarColumna(sheet, nombreColumna) {
   const lastCol = Math.max(sheet.getLastColumn(), 1);
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
@@ -1003,6 +1018,11 @@ function asegurarColumna(sheet, nombreColumna) {
   const newCol = lastCol + 1;
   sheet.getRange(1, newCol).setValue(nombreColumna);
   return newCol;
+}
+
+function getSheetHeaders(sheet) {
+  const lastCol = Math.max(sheet.getLastColumn(), 1);
+  return sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 }
 
 function getSheet(sheetName) {
@@ -1021,8 +1041,10 @@ function buscarFilaPorFolio(sheetName, folio) {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return -1;
   
-  // FIX_COLUMNA_FOLIO: en PAGOS el folio está en columna 2, en otras hojas en columna 3
-  const colFolio = (sheetName === SHEET_PAGOS) ? 2 : 3;
+  // FIX_COLUMNAS_DINAMICAS: localizar la columna 'folio' por encabezado.
+  const headers = getSheetHeaders(sheet);
+  const idxFolio = headers.indexOf('folio');
+  const colFolio = idxFolio >= 0 ? idxFolio + 1 : ((sheetName === SHEET_PAGOS) ? 2 : 3);
   
   const folios = sheet.getRange(2, colFolio, lastRow - 1, 1).getValues();
   for (var i = 0; i < folios.length; i++) {
@@ -1035,4 +1057,306 @@ function buscarFilaPorFolio(sheetName, folio) {
 
 function jsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============================================================================
+// PASE PRE-CERTIFICADO
+// ============================================================================
+
+function getSheetPases() {
+  const sheetId = PropertiesService.getScriptProperties().getProperty('SHEET_ID');
+  if (!sheetId) throw new Error('SHEET_ID no configurado.');
+  const ss = SpreadsheetApp.openById(sheetId);
+  let sheet = ss.getSheetByName('PASES_PRE_CERTIFICADOS');
+  if (!sheet) {
+    sheet = ss.insertSheet('PASES_PRE_CERTIFICADOS');
+    const columnas = [
+      'folio_pase', 'fecha_emision', 'fecha_vencimiento', 'dias_vigencia',
+      'solicitante_nombre', 'solicitante_telefono', 'solicitante_curp', 'solicitante_rfc',
+      'solicitante_ejido', 'solicitante_municipio', 'solicitante_notas',
+      'checksum_vector', 'vector_64d', 'fierro_image_url',
+      'estado', 'folio_certificado_vinculado', 'emitido_por', 'emitido_en',
+      'qr_code', 'notas_admin', 'url_documento_png'
+    ];
+    sheet.getRange(1, 1, 1, columnas.length).setValues([columnas]);
+    sheet.getRange(1, 1, 1, columnas.length).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  } else {
+    const lastCol = Math.max(sheet.getLastColumn(), 1);
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    if (headers.indexOf('url_documento_png') < 0) {
+      sheet.getRange(1, lastCol + 1).setValue('url_documento_png');
+      sheet.getRange(1, lastCol + 1).setFontWeight('bold');
+    }
+  }
+  return sheet;
+}
+
+function actualizarUrlDocumentoPase(folio_pase, url_documento_png) {
+  try {
+    const sheet = getSheetPases();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, error: 'Sin datos' };
+    const lastCol = Math.max(sheet.getLastColumn(), 1);
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    const idxFolio = headers.indexOf('folio_pase');
+    const idxUrl = headers.indexOf('url_documento_png');
+    if (idxFolio < 0 || idxUrl < 0) return { success: false, error: 'Columnas no encontradas' };
+
+    const values = sheet.getRange(2, idxFolio + 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < values.length; i++) {
+      if (String(values[i][0]).trim() === String(folio_pase).trim()) {
+        sheet.getRange(i + 2, idxUrl + 1).setValue(url_documento_png || '');
+        return { success: true };
+      }
+    }
+    return { success: false, error: 'Pase no encontrado: ' + folio_pase };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+function guardarPasePreCertificado(data) {
+  try {
+    const sheet = getSheetPases();
+    const fila = [
+      data.folio_pase || '',
+      data.fecha_emision || '',
+      data.fecha_vencimiento || '',
+      data.dias_vigencia || 15,
+      data.solicitante_nombre || '',
+      data.solicitante_telefono || '',
+      data.solicitante_curp || '',
+      data.solicitante_rfc || '',
+      data.solicitante_ejido || '',
+      data.solicitante_municipio || 'Pánuco',
+      data.solicitante_notas || '',
+      data.checksum_vector || '',
+      data.vector_64d ? JSON.stringify(data.vector_64d) : '',
+      data.fierro_image_url || '',
+      data.estado || 'RESERVADO',
+      data.folio_certificado_vinculado || '',
+      data.emitido_por || '',
+      data.emitido_en || new Date().toISOString(),
+      data.qr_code || '',
+      data.notas_admin || ''
+    ];
+    sheet.appendRow(fila);
+    return { success: true, folio_pase: data.folio_pase };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+function listarPasesPreCertificados() {
+  try {
+    const sheet = getSheetPases();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: true, pases: [] };
+    const values = sheet.getRange(2, 1, lastRow - 1, 20).getValues();
+    const pases = values.map(function(r) {
+      return {
+        folio_pase: r[0], fecha_emision: r[1], fecha_vencimiento: r[2],
+        dias_vigencia: r[3], solicitante_nombre: r[4], solicitante_telefono: r[5],
+        solicitante_curp: r[6], solicitante_rfc: r[7], solicitante_ejido: r[8],
+        solicitante_municipio: r[9], solicitante_notas: r[10],
+        checksum_vector: r[11], vector_64d: r[12] ? JSON.parse(r[12]) : [],
+        fierro_image_url: r[13], estado: r[14], folio_certificado_vinculado: r[15],
+        emitido_por: r[16], emitido_en: r[17], qr_code: r[18], notas_admin: r[19]
+      };
+    });
+    return { success: true, pases: pases };
+  } catch (err) {
+    return { success: false, error: String(err), pases: [] };
+  }
+}
+
+function actualizarEstadoPase(folio_pase, nuevoEstado, folio_certificado_vinculado) {
+  try {
+    const sheet = getSheetPases();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, error: 'Sin datos' };
+    const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < values.length; i++) {
+      if (String(values[i][0]).trim() === String(folio_pase).trim()) {
+        sheet.getRange(i + 2, 15).setValue(nuevoEstado);
+        if (folio_certificado_vinculado) {
+          sheet.getRange(i + 2, 16).setValue(folio_certificado_vinculado);
+        }
+        return { success: true };
+      }
+    }
+    return { success: false, error: 'Pase no encontrado: ' + folio_pase };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+// ============================================================================
+// v4.3 · HISTORIAL DE REVALIDACIONES
+// ============================================================================
+
+function registrarRevalidacionHistorial(payload) {
+  try {
+    const data = payload.data || payload;
+    const folioOriginal = data.folio_original;
+    const vigenciaAnterior = data.vigencia_anterior || '';
+    const vigenciaNueva = data.vigencia_nueva || '';
+    const operador = data.operador || 'SISTEMA';
+    const notas = data.notas || '';
+
+    if (!folioOriginal) {
+      return jsonResponse({ success: false, error: 'Falta folio_original' });
+    }
+    if (!vigenciaNueva) {
+      return jsonResponse({ success: false, error: 'Falta vigencia_nueva' });
+    }
+
+    const sheetId = PropertiesService.getScriptProperties().getProperty('SHEET_ID');
+    const ss = SpreadsheetApp.openById(sheetId);
+    let sheet = ss.getSheetByName('REVALIDACIONES');
+    if (!sheet) {
+      return jsonResponse({ success: false, error: 'Hoja REVALIDACIONES no existe. Ejecutar script de instalación.' });
+    }
+
+    const timestamp = Date.now();
+    const year = new Date().getFullYear();
+    const folioRevalidacion = 'REV-' + year + '-' + String(timestamp).slice(-6);
+    const idRevalidacion = 'rev-' + timestamp;
+    const now = new Date().toISOString();
+
+    const fila = [
+      idRevalidacion,
+      folioOriginal,
+      folioRevalidacion,
+      now,
+      vigenciaAnterior,
+      vigenciaNueva,
+      operador,
+      notas,
+    ];
+
+    sheet.appendRow(fila);
+
+    return jsonResponse({
+      success: true,
+      action: 'revalidacion_registrada',
+      id_revalidacion: idRevalidacion,
+      folio_revalidacion: folioRevalidacion,
+      folio_original: folioOriginal,
+      fecha_revalidacion: now,
+      row: sheet.getLastRow(),
+    });
+
+  } catch (err) {
+    return jsonResponse({
+      success: false,
+      error: 'Error registrando revalidación: ' + (err.message || String(err))
+    });
+  }
+}
+
+function obtenerHistorialRevalidaciones(params) {
+  try {
+    const folioOriginal = params.folio_original;
+    if (!folioOriginal) {
+      return jsonResponse({ success: false, error: 'Falta folio_original' });
+    }
+
+    const sheetId = PropertiesService.getScriptProperties().getProperty('SHEET_ID');
+    const ss = SpreadsheetApp.openById(sheetId);
+    const sheet = ss.getSheetByName('REVALIDACIONES');
+    if (!sheet) {
+      return jsonResponse({ success: true, revalidaciones: [], total: 0 });
+    }
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      return jsonResponse({ success: true, revalidaciones: [], total: 0 });
+    }
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    const revalidaciones = data
+      .filter(function(r) { return String(r[1]).trim() === String(folioOriginal).trim(); })
+      .map(function(r) {
+        return {
+          id_revalidacion: r[0],
+          folio_original: r[1],
+          folio_revalidacion: r[2],
+          fecha_revalidacion: r[3],
+          vigencia_anterior: r[4],
+          vigencia_nueva: r[5],
+          operador: r[6],
+          notas: r[7],
+        };
+      })
+      .reverse();
+
+    return jsonResponse({
+      success: true,
+      total: revalidaciones.length,
+      revalidaciones: revalidaciones,
+    });
+
+  } catch (err) {
+    return jsonResponse({
+      success: false,
+      error: 'Error obteniendo historial: ' + (err.message || String(err))
+    });
+  }
+}
+
+// ============================================================================
+// v4.3 · CHECKLIST DE REQUISITOS
+// ============================================================================
+
+function guardarChecklistRequisitos(payload) {
+  try {
+    const data = payload.data || payload;
+    const folio = data.folio;
+    const tramite = data.tramite || 'REVALIDACION';
+    const marcados = data.requisitos_marcados || [];
+    const totalCriticos = data.total_criticos || 0;
+    const operador = data.operador || 'SISTEMA';
+
+    if (!folio) {
+      return jsonResponse({ success: false, error: 'Falta folio' });
+    }
+
+    const sheet = getSheet(SHEET_NAME);
+    const row = buscarFilaPorFolio(SHEET_NAME, folio);
+    if (row <= 0) {
+      return jsonResponse({ success: false, error: 'Registro no encontrado: ' + folio });
+    }
+
+    const colChecklist = asegurarColumna(sheet, 'checklist_revalidacion');
+    const colFecha = asegurarColumna(sheet, 'checklist_revalidacion_fecha');
+    const colOperador = asegurarColumna(sheet, 'checklist_revalidacion_operador');
+    const colCriticos = asegurarColumna(sheet, 'checklist_revalidacion_total_criticos');
+    const colTramite = asegurarColumna(sheet, 'checklist_revalidacion_tramite');
+
+    const now = new Date().toISOString();
+    sheet.getRange(row, colChecklist).setValue(JSON.stringify(marcados));
+    sheet.getRange(row, colFecha).setValue(now);
+    sheet.getRange(row, colOperador).setValue(operador);
+    sheet.getRange(row, colCriticos).setValue(totalCriticos);
+    sheet.getRange(row, colTramite).setValue(tramite);
+
+    return jsonResponse({
+      success: true,
+      action: 'checklist_guardado',
+      folio: folio,
+      tramite: tramite,
+      total_marcados: marcados.length,
+      total_criticos: totalCriticos,
+      fecha: now,
+      row: row
+    });
+
+  } catch (err) {
+    return jsonResponse({
+      success: false,
+      error: 'Error guardando checklist: ' + (err.message || String(err))
+    });
+  }
 }

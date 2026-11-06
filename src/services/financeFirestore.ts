@@ -412,6 +412,64 @@ export async function getPagosByFolioFierro(folioFierro: string): Promise<Paymen
   return allOrders.filter((o) => o.folioFierro === folioFierro);
 }
 
+// =========================================================================
+// FIX_RECIBO_DUPLICADO: evita generar dos ordenes para el mismo productor
+// con los mismos conceptos (mismo tramite) mientras exista una vigente.
+// =========================================================================
+
+export interface DuplicateOrderCandidate {
+  folioFierro?: string;
+  curp?: string;
+  rfc?: string;
+  taxpayerName?: string;
+  concepts: string[];
+}
+
+function normalizeOrderName(name: string): string {
+  return (name || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function conceptsKey(concepts: string[]): string {
+  return [...(concepts || [])].map((c) => String(c).trim().toUpperCase()).sort().join('|');
+}
+
+/**
+ * Devuelve la orden existente (no cancelada) que colisiona con el candidato,
+ * o null si no hay duplicado. La colision requiere el MISMO conjunto de
+ * conceptos (tramite) y coincidencia en folioFierro, CURP, RFC o nombre.
+ */
+export function findDuplicatePaymentOrder(
+  orders: PaymentOrder[],
+  candidate: DuplicateOrderCandidate
+): PaymentOrder | null {
+  const targetKey = conceptsKey(candidate.concepts);
+  const curp = (candidate.curp || '').trim().toUpperCase();
+  const rfc = (candidate.rfc || '').trim().toUpperCase();
+  const rfcUtil = rfc.length >= 12 && !rfc.startsWith('XAXX') && !rfc.startsWith('XEXX');
+  const nameKey = normalizeOrderName(candidate.taxpayerName || '');
+  const folioFierro = (candidate.folioFierro || '').trim().toUpperCase();
+
+  for (const o of orders) {
+    if (!o || o.status === 'CANCELLED') continue;
+    if (conceptsKey(o.concepts) !== targetKey) continue;
+    const oFolio = (o.folioFierro || '').trim().toUpperCase();
+    const oCurp = (o.curp || '').trim().toUpperCase();
+    const oRfc = (o.rfc || '').trim().toUpperCase();
+    const oName = normalizeOrderName(o.taxpayerName || '');
+    if (folioFierro && oFolio && oFolio === folioFierro) return o;
+    if (curp && oCurp && oCurp === curp) return o;
+    if (rfcUtil && oRfc && oRfc === rfc) return o;
+    if (nameKey && oName && oName === nameKey) return o;
+  }
+  return null;
+}
+
 export function generateNextFolio(currentOrders?: PaymentOrder[]): string {
   const orders = currentOrders || getLocalOrders();
   const year = new Date().getFullYear();

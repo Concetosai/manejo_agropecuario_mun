@@ -93,10 +93,14 @@ export function recordToGoogle(record: HistoricalRecord): GoogleRegistro {
     url_ficha: record.imagenes?.ficha_original || '',
     url_fierro: record.imagenes?.fierro_digitalizado || '',
     url_certificado: record.imagenes?.certificado_generado || (record as any).certificadoDriveUrl || '',
+    url_certificado_imagen: (record as any).certificadoImagenUrl || (record as any).url_certificado_imagen || undefined,
+    url_miniatura_fierro: (record as any).url_miniatura_fierro || undefined,
     url_foto_titular: (record as any).fotoTitularDriveUrl || record.imagenes?.foto_titular || '',
     url_firma: (record as any).firmaDriveUrl || record.imagenes?.firma || '',
     operador: (record as any).operador || 'OPERADOR',
     fecha_captura: record.digitizedAt || new Date().toISOString(),
+    // FIX_QR_CODE: persistir la URL de verificacion del QR en la hoja
+    qr_code: (record as any).qr_code || '',
   };
 }
 
@@ -104,7 +108,7 @@ export function googleToRecord(g: GoogleRegistro): HistoricalRecord {
   const imagenes: DigitalExpedienteImages = {
     credencial_ine: g.url_ine || undefined,
     ficha_original: g.url_ficha || undefined,
-    fierro_digitalizado: g.url_fierro || undefined,
+    fierro_digitalizado: g.url_fierro || g.url_miniatura_fierro || undefined,
     certificado_generado: g.url_certificado || undefined,
     foto_titular: g.url_foto_titular || undefined,
     firma: g.url_firma || undefined,
@@ -120,8 +124,10 @@ export function googleToRecord(g: GoogleRegistro): HistoricalRecord {
     ineDriveUrl: g.url_ine || undefined,
     fotoTitularDriveUrl: g.url_foto_titular || undefined,
     firmaDriveUrl: g.url_firma || undefined,
-    fierroImageUrl: g.url_fierro || undefined,
+    fierroImageUrl: g.url_fierro || g.url_miniatura_fierro || undefined,
     certificadoDriveUrl: g.url_certificado || undefined,
+    // FIX_CERTIFICADO_IMAGEN: recuperar la imagen PNG/JPG del certificado
+    certificadoImagenUrl: g.url_certificado_imagen || undefined,
     ownerName: g.nombre_productor || '',
     curp: g.curp || '',
     rfc: g.rfc || '',
@@ -157,11 +163,13 @@ export function googleToRecord(g: GoogleRegistro): HistoricalRecord {
     vector_proportions: g.vector_proportions || undefined,
     vector_varianza: g.vector_varianza || undefined,
     hash_vector: g.hash_vector,
-    imagen_base64: g.url_fierro,
-    extractedBrandImage: g.url_fierro,
+    imagen_base64: g.url_fierro || g.url_miniatura_fierro,
+    extractedBrandImage: g.url_fierro || g.url_miniatura_fierro,
     isLocal: true,
     isHistoricalDigitized: g.id_registro_tipo === 'HISTORICO',
     digitizedAt: g.fecha_captura,
+    // FIX_QR_CODE: recuperar la URL de verificacion del QR desde la hoja
+    qr_code: (g as any).qr_code || undefined,
   };
 }
 
